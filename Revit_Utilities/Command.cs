@@ -1,25 +1,30 @@
-#region Namespaces
-
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-
-using Autodesk.Revit.Attributes;
-using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Selection;
-
-#endregion
+// --------------------------------------------------------------------------------------------------------------------
+// <copyright file="Command.cs" company="PMTech">
+//   PMTech
+// </copyright>
+// <summary>
+//   The command.
+// </summary>
+// --------------------------------------------------------------------------------------------------------------------
 
 namespace Revit_Utilities
 {
-    using System.IO;
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
-    using System.Runtime.CompilerServices;
+    using System.Reflection;
     using System.Text;
     using System.Windows.Forms;
 
+    using Autodesk.Revit.Attributes;
+    using Autodesk.Revit.DB;
+    using Autodesk.Revit.UI;
+
+    using Revit_Utilities.Utilities;
+
     using Application = Autodesk.Revit.ApplicationServices.Application;
+    using X = Microsoft.Office.Interop.Excel;
 
     /// <summary>
     /// The command.
@@ -49,215 +54,178 @@ namespace Revit_Utilities
             Application app = uiapp.Application;
             Document doc = uidoc.Document;
 
-            var results = this.FilterStringEquals("Комментарии", string.Empty, doc);
-            StringBuilder sb = new StringBuilder();
-
-            foreach (Element e in results)
-            {
-                sb.AppendLine(e.Name);
-            }
-
-            TaskDialog.Show("Revit", sb.ToString());
+            GetElementsParameters(doc);
 
             return Result.Succeeded;
         }
 
-        private static void WriteFile(IList<Element> col)
+        private static void GetElementsParameters(Document doc)
         {
-            StringBuilder sb = new StringBuilder();
+            Stopwatch sw = Stopwatch.StartNew();
+            Dictionary<string, List<Element>> sortedElements = new Dictionary<string, List<Element>>();
 
-            foreach (Element e in col)
+            // Iterate over all elements, both symbols and 
+            // model elements, and them in the dictionary.
+            ElementFilter f = new LogicalOrFilter(new ElementIsElementTypeFilter(false), new ElementIsElementTypeFilter(true));
+            FilteredElementCollector collector = new FilteredElementCollector(doc).WherePasses(f);
+
+            foreach (Element e in collector)
             {
-                foreach (Parameter p in e.Parameters)
+                Category category = e.Category;
+
+                if (category != null)
                 {
-                    if (p.Definition.Name.Equals("Имя семейства"))
+                    // If this category was not yet encountered,
+                    // add it and create a new container for its
+                    // elements.
+                    if (!sortedElements.ContainsKey(category.Name))
                     {
-                        sb.AppendLine(p.AsString());
+                        sortedElements.Add(category.Name, new List<Element>());
                     }
+
+                    sortedElements[category.Name].Add(e);
                 }
             }
 
-            SaveFile(sb);
-        }
+            // Launch or access Excel via COM Interop:
+            X.Application excel = new X.Application { Visible = true };
+            X.Workbook workbook = excel.Workbooks.Add(Missing.Value);
 
-        private static void SaveFile(StringBuilder sb)
-        {
-            SaveFileDialog saveFileDialog = new SaveFileDialog()
-                                                {
-                                                    Filter = @"Text Files|*.txt",
-                                                    FilterIndex = 1,
-                                                    RestoreDirectory = true,
-                                                    Title = @"Создать файл общих параметров"
-                                                };
+            // We cannot delete all work sheets, 
+            // Excel requires at least one.
+            // while( 1 < workbook.Sheets.Count ) 
+            // {
+            // worksheet = workbook.Sheets.get_Item(1) as X.Worksheet;
+            // worksheet.Delete();
+            // }
 
-            if (saveFileDialog.ShowDialog() == DialogResult.OK)
+            // Loop through all collected categories and 
+            // create a worksheet for each except the first.
+            // We sort the categories and work trough them 
+            // from the end, since the worksheet added last 
+            // shows up first in the Excel tab.
+            List<string> keys = new List<string>(sortedElements.Keys);
+
+            keys.Sort();
+            keys.Reverse();
+
+            bool first = true;
+            int nElements = 0;
+            int nCategories = sortedElements.Count;
+
+            foreach (var categoryName in keys)
             {
-                string fileName = saveFileDialog.FileName;
+                List<Element> elementSet = sortedElements[categoryName];
 
-                using (StreamWriter stream = new StreamWriter(fileName))
+                // Create and name the worksheet
+                X.Worksheet worksheet;
+                if (first)
                 {
-                    stream.WriteLine(sb.ToString());
-                }
-            }
-        }
+                    worksheet = workbook.Sheets.Item[1] as X.Worksheet;
 
-        private IEnumerable<Parameter> GetParametersFromSchedule(ViewSchedule viewSchedule)
-        {
-            var instCollector = new FilteredElementCollector(viewSchedule.Document, viewSchedule.Id)
-                .WhereElementIsNotElementType();
-
-            List<Parameter> allParameters =
-                instCollector.SelectMany(x => x.Parameters.Cast<Parameter>().Select(p => p)).ToList();
-
-            var definition = viewSchedule.Definition;
-            ScheduleField foundField = null;
-
-            foreach (ScheduleFieldId fieldId in definition.GetFieldOrder())
-            {
-                foundField = definition.GetField(fieldId);
-
-                if (foundField.IsCombinedParameterField)
-                {
-                    IList<TableCellCombinedParameterData> combinedParams = foundField.GetCombinedParameters();
-                    foreach (TableCellCombinedParameterData param in combinedParams)
-                    {
-                        Parameter p = allParameters.FirstOrDefault(x => x.Id.Compare(param.ParamId) == 0);
-                        if (p != null)
-                        {
-                            yield return p;
-                        }
-                    }
+                    first = false;
                 }
                 else
                 {
-                    Parameter p = allParameters.FirstOrDefault(x => x.Id == foundField.ParameterId);
-                    if (p != null)
-                    {
-                        yield return p;
-                    }
+                    worksheet = excel.Worksheets.Add(Missing.Value, Missing.Value, Missing.Value, Missing.Value) as X.Worksheet;
                 }
-            }
-        }
 
-        private IList<Element> FilterStringEquals(string caseParameter, string searchValue, Document doc)
-        {
-            Array bips = Enum.GetValues(typeof(BuiltInParameter));
-            BindingMap bm = doc.ParameterBindings;
+                sortedElements.TryGetValue(categoryName, out List<Element> el);
+                string newName = $"{el.Find(x => x.Category.Name == categoryName).Id.IntegerValue}";
+                var name = categoryName.Length > 31 ? newName : categoryName;
 
-            DefinitionBindingMapIterator bmlist = bm.ForwardIterator();
-            ElementId paramId = null;
+                name = name.Replace(':', '_').Replace('/', '_');
 
-            while (bmlist.MoveNext())
-            {
-                InternalDefinition bindDef = (InternalDefinition)bmlist.Key;
+                worksheet.Name = name;
 
-                if (bindDef.Name == caseParameter)
+                // Determine the names of all parameters 
+                // defined for the elements in this set.
+                List<string> paramNames = new List<string>();
+
+                foreach (Element e in elementSet)
                 {
-                    paramId = bindDef.Id;
-                    break;
-                }
-            }
+                    ParameterSet parameters = e.Parameters;
 
-            List<BuiltInParameter> bipList = new List<BuiltInParameter>();
-
-            if (paramId == null)
-            {
-                foreach (BuiltInParameter bip in bips)
-                {
-                    string name;
-                    try
+                    foreach (Parameter parameter in parameters)
                     {
-                        name = LabelUtils.GetLabelFor(bip);
-                    }
-                    catch
-                    {
-                        continue;
-                    }
+                        name = parameter.Definition.Name;
 
-                    if (name == caseParameter)
-                    {
-                        bipList.Add(bip);
-                    }
-                }
-            }
-
-            var sharedParamRule = new SharedParameterApplicableRule(caseParameter);
-            var evaluator = new FilterStringEquals();
-
-            Element parameter = null;
-            FilteredElementCollector collector = null;
-            FilteredElementCollector collector2 = null;
-
-            if ((paramId == null) && (bipList.Count == 0))
-            {
-                var coll = new FilteredElementCollector(doc).OfClass(typeof(ParameterElement)).Cast<ParameterElement>();
-
-                foreach (ParameterElement param in coll)
-                {
-                    if (param.GetDefinition().Name == caseParameter)
-                    {
-                        parameter = param;
+                        if (!paramNames.Contains(name))
+                        {
+                            paramNames.Add(name);
+                        }
                     }
                 }
 
-                if (parameter != null)
-                {
-                    var rulesList = new List<FilterRule>();
-                    var provider = new ParameterValueProvider(parameter.Id);
-                    var filterRule = new FilterStringRule(provider, evaluator, searchValue, false);
-                    rulesList.Add(filterRule);
-                    rulesList.Add(sharedParamRule);
-                    var paramFilter = new ElementParameterFilter(rulesList);
-                    collector = new FilteredElementCollector(doc).OfClass(typeof(FamilyInstance))
-                        .WherePasses(paramFilter);
+                paramNames.Sort();
 
-                    collector2 = new FilteredElementCollector(doc).OfClass(typeof(HostObject)).WherePasses(paramFilter)
-                        .UnionWith(collector);
-                }
-            }
-            else if (paramId == null)
-            {
-                var filterList = new List<ElementFilter>();
-                foreach (BuiltInParameter parameterGroup in bipList)
+                // Add the header row in bold.
+                worksheet.Cells[1, 1] = "ID";
+                worksheet.Cells[1, 2] = "IsType";
+
+                int column = 3;
+
+                foreach (string paramName in paramNames)
                 {
-                    var provider = new ParameterValueProvider(new ElementId(parameterGroup));
-                    var filterRule = new FilterStringRule(provider, evaluator, searchValue, false);
-                    var paramFilter = new ElementParameterFilter(filterRule);
-                    filterList.Add(paramFilter);
+                    worksheet.Cells[1, column] = paramName;
+                    ++column;
                 }
 
-                var logicalOrFilter = new LogicalOrFilter(filterList);
-                collector = new FilteredElementCollector(doc).OfClass(typeof(FamilyInstance))
-                    .WherePasses(logicalOrFilter);
-                collector2 = new FilteredElementCollector(doc).OfClass(typeof(HostObject)).WherePasses(logicalOrFilter)
-                    .UnionWith(collector);
-            }
-            else
-            {
-                var rulesList = new List<FilterRule>();
-                var provider = new ParameterValueProvider(paramId);
-                var filterRule = new FilterStringRule(provider, evaluator, searchValue, false);
-                rulesList.Add(filterRule);
-                rulesList.Add(sharedParamRule);
-                var paramFilter = new ElementParameterFilter(rulesList);
-                collector = new FilteredElementCollector(doc).OfClass(typeof(FamilyInstance)).WherePasses(paramFilter);
-                collector2 = new FilteredElementCollector(doc).OfClass(typeof(HostObject)).WherePasses(paramFilter)
-                    .UnionWith(collector);
-            }
+                var range = worksheet.Range["A1", "Z1"];
 
-            if ((parameter != null) && (paramId == null) && (bipList.Count == 0))
-            {
-                TaskDialog.Show("Revit", "Does not work with non-shared family parameters");
-            }
-            else
-            {
-                if (collector2 != null)
+                range.Font.Bold = true;
+                range.EntireColumn.AutoFit();
+
+                int row = 2;
+
+                foreach (Element e in elementSet)
                 {
-                    return collector2.ToElements();
+                    // First column is the element id,
+                    // second a flag indicating type (symbol)
+                    // or not, both displayed as an integer.
+                    worksheet.Cells[row, 1] = e.Id.IntegerValue;
+                    worksheet.Cells[row, 2] = e is ElementType ? 1 : 0;
+                    column = 3;
+
+                    foreach (string paramName in paramNames)
+                    {
+                        var paramValue = "*NA*";
+
+                        // Parameter p = e.get_Parameter( paramName ); // 2014
+
+                        // Careful! This returns the first best param found.
+                        Parameter p = e.LookupParameter(paramName); // 2015
+
+                        if (p != null)
+                        {
+                            // try
+                            // {
+                            paramValue = LabUtils.GetParameterValue(p);
+
+                            // }
+                            // catch( Exception ex )
+                            // {
+                            // Debug.Print( ex.Message );
+                            // }
+                        }
+
+                        worksheet.Cells[row, column++] = paramValue;
+                    }
+
+                    // column
+                    ++nElements;
+                    ++row;
                 }
+
+                // row
             }
 
-            return null;
+            // category == worksheet
+            sw.Stop();
+
+            TaskDialog.Show(
+                "Parameter Export",
+                $"{nCategories} categories and a total " + $"of {nElements} elements exported " + $"in {sw.Elapsed.TotalSeconds:F2} seconds.");
         }
     }
 }
