@@ -64,12 +64,21 @@ namespace Revit_Utilities
             Stopwatch sw = Stopwatch.StartNew();
             Dictionary<string, List<Element>> sortedElements = new Dictionary<string, List<Element>>();
 
-            // Iterate over all elements, both symbols and 
-            // model elements, and them in the dictionary.
-            ElementFilter f = new LogicalOrFilter(new ElementIsElementTypeFilter(false), new ElementIsElementTypeFilter(true));
-            FilteredElementCollector collector = new FilteredElementCollector(doc).WherePasses(f);
+            FilteredElementCollector collector = new FilteredElementCollector(doc).WhereElementIsNotElementType();
 
-            foreach (Element e in collector)
+            // BuiltInCategory[] cats = { BuiltInCategory.OST_Doors, BuiltInCategory.OST_Walls, BuiltInCategory.OST_Windows };
+            List<BuiltInCategory> cats = collector.Where(e => (e.Category != null) && e.Category.HasMaterialQuantities)
+                .Select(e => (BuiltInCategory)e.Category.Id.IntegerValue).ToList();
+
+            IList<ElementFilter> a = cats.Select(bic => new ElementCategoryFilter(bic)).Cast<ElementFilter>().ToList();
+
+            LogicalOrFilter categoryFilter = new LogicalOrFilter(a);
+
+            // Run the collector
+            FilteredElementCollector els = new FilteredElementCollector(doc).WhereElementIsNotElementType().WhereElementIsViewIndependent()
+                .WherePasses(categoryFilter);
+
+            foreach (Element e in els)
             {
                 Category category = e.Category;
 
@@ -110,8 +119,8 @@ namespace Revit_Utilities
             keys.Reverse();
 
             bool first = true;
-            int nElements = 0;
-            int nCategories = sortedElements.Count;
+            int numElements = 0;
+            int numCategories = sortedElements.Count;
 
             foreach (var categoryName in keys)
             {
@@ -213,7 +222,7 @@ namespace Revit_Utilities
                     }
 
                     // column
-                    ++nElements;
+                    ++numElements;
                     ++row;
                 }
 
@@ -225,7 +234,7 @@ namespace Revit_Utilities
 
             TaskDialog.Show(
                 "Parameter Export",
-                $"{nCategories} categories and a total " + $"of {nElements} elements exported " + $"in {sw.Elapsed.TotalSeconds:F2} seconds.");
+                $"{numCategories} categories and a total " + $"of {numElements} elements exported " + $"in {sw.Elapsed.TotalSeconds:F2} seconds.");
         }
     }
 }
