@@ -62,20 +62,25 @@ namespace Revit_Utilities
         private static void GetElementsParameters(Document doc)
         {
             Stopwatch sw = Stopwatch.StartNew();
+
             Dictionary<string, List<Element>> sortedElements = new Dictionary<string, List<Element>>();
 
-            FilteredElementCollector collector = new FilteredElementCollector(doc).WhereElementIsNotElementType();
+            var cats = new FilteredElementCollector(doc)
+                .WhereElementIsNotElementType()
+                .Where(e => (e.Category != null) && e.Category.HasMaterialQuantities)
+                .Select(e => (BuiltInCategory)e.Category.Id.IntegerValue)
+                .ToList();
 
-            // BuiltInCategory[] cats = { BuiltInCategory.OST_Doors, BuiltInCategory.OST_Walls, BuiltInCategory.OST_Windows };
-            List<BuiltInCategory> cats = collector.Where(e => (e.Category != null) && e.Category.HasMaterialQuantities)
-                .Select(e => (BuiltInCategory)e.Category.Id.IntegerValue).ToList();
-
-            IList<ElementFilter> a = cats.Select(bic => new ElementCategoryFilter(bic)).Cast<ElementFilter>().ToList();
+            IList<ElementFilter> a = cats
+                .Select(bic => new ElementCategoryFilter(bic))
+                .Cast<ElementFilter>()
+                .ToList();
 
             LogicalOrFilter categoryFilter = new LogicalOrFilter(a);
 
-            // Run the collector
-            FilteredElementCollector els = new FilteredElementCollector(doc).WhereElementIsNotElementType().WhereElementIsViewIndependent()
+            FilteredElementCollector els = new FilteredElementCollector(doc)
+                .WhereElementIsNotElementType()
+                .WhereElementIsViewIndependent()
                 .WherePasses(categoryFilter);
 
             foreach (Element e in els)
@@ -84,9 +89,7 @@ namespace Revit_Utilities
 
                 if (category != null)
                 {
-                    // If this category was not yet encountered,
-                    // add it and create a new container for its
-                    // elements.
+                    // If this category was not yet encountered, add it and create a new container for its elements.
                     if (!sortedElements.ContainsKey(category.Name))
                     {
                         sortedElements.Add(category.Name, new List<Element>());
@@ -96,24 +99,10 @@ namespace Revit_Utilities
                 }
             }
 
-            // Launch or access Excel via COM Interop:
-            X.Application excel = new X.Application { Visible = true };
-            X.Workbook workbook = excel.Workbooks.Add(Missing.Value);
+            var excel = new X.Application { Visible = true };
+            var workbook = excel.Workbooks.Add(Missing.Value);
 
-            // We cannot delete all work sheets, 
-            // Excel requires at least one.
-            // while( 1 < workbook.Sheets.Count ) 
-            // {
-            // worksheet = workbook.Sheets.get_Item(1) as X.Worksheet;
-            // worksheet.Delete();
-            // }
-
-            // Loop through all collected categories and 
-            // create a worksheet for each except the first.
-            // We sort the categories and work trough them 
-            // from the end, since the worksheet added last 
-            // shows up first in the Excel tab.
-            List<string> keys = new List<string>(sortedElements.Keys);
+            var keys = new List<string>(sortedElements.Keys);
 
             keys.Sort();
             keys.Reverse();
@@ -189,9 +178,6 @@ namespace Revit_Utilities
 
                 foreach (Element e in elementSet)
                 {
-                    // First column is the element id,
-                    // second a flag indicating type (symbol)
-                    // or not, both displayed as an integer.
                     worksheet.Cells[row, 1] = e.Id.IntegerValue;
                     worksheet.Cells[row, 2] = e is ElementType ? 1 : 0;
                     column = 3;
@@ -200,41 +186,24 @@ namespace Revit_Utilities
                     {
                         var paramValue = "*NA*";
 
-                        // Parameter p = e.get_Parameter( paramName ); // 2014
-
-                        // Careful! This returns the first best param found.
-                        Parameter p = e.LookupParameter(paramName); // 2015
+                        Parameter p = e.LookupParameter(paramName);
 
                         if (p != null)
                         {
-                            // try
-                            // {
                             paramValue = LabUtils.GetParameterValue(p);
-
-                            // }
-                            // catch( Exception ex )
-                            // {
-                            // Debug.Print( ex.Message );
-                            // }
                         }
 
                         worksheet.Cells[row, column++] = paramValue;
                     }
 
-                    // column
                     ++numElements;
                     ++row;
                 }
-
-                // row
             }
 
-            // category == worksheet
             sw.Stop();
 
-            TaskDialog.Show(
-                "Parameter Export",
-                $"{numCategories} categories and a total " + $"of {numElements} elements exported " + $"in {sw.Elapsed.TotalSeconds:F2} seconds.");
+            TaskDialog.Show("Parameter Export", $"{numCategories} categories and a total " + $"of {numElements} elements exported " + $"in {sw.Elapsed.TotalSeconds:F2} seconds.");
         }
     }
 }
