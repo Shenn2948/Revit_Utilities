@@ -56,17 +56,9 @@
   <ItemGroup>
     <Compile Include="Command.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Utilities\ElementIdForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Utilities\ElementIdForm.designer.cs">
-      <DependentUpon>ElementIdForm.cs</DependentUpon>
-    </Compile>
     <Compile Include="Utilities\LabConstants.cs" />
     <Compile Include="Utilities\LabUtils.cs" />
     <Compile Include="Utilities\ResultsHelper.cs" />
-    <Compile Include="Utilities\ParametersHelper.cs" />
-    <Compile Include="Utilities\TableParser.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Revit_Utilities.addin" />
@@ -102,11 +94,6 @@
       <Isolated>False</Isolated>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </COMReference>
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Utilities\ElementIdForm.resx">
-      <DependentUpon>ElementIdForm.cs</DependentUpon>
-    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

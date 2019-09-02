@@ -30,7 +30,7 @@ namespace Revit_Utilities.Utilities
         /// </summary>
         public static string PluralSuffix(int n)
         {
-            return 1 == n ? string.Empty : "s";
+            return n == 1 ? string.Empty : "s";
         }
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace Revit_Utilities.Utilities
         /// </summary>
         public static string DotOrColon(int n)
         {
-            return 0 < n ? ":" : ".";
+            return n > 0 ? ":" : ".";
         }
 
         /// <summary>
@@ -62,7 +62,7 @@ namespace Revit_Utilities.Utilities
         /// </summary>
         public static string ElementDescription(Element e)
         {
-            string description = (null == e.Category) ? e.GetType().Name : e.Category.Name;
+            string description = (e.Category == null) ? e.GetType().Name : e.Category.Name;
 
             if (e is FamilyInstance fi)
             {
@@ -132,10 +132,7 @@ namespace Revit_Utilities.Utilities
         /// </summary>
         public static void ErrorMsg(string msg)
         {
-            Debug.WriteLine(msg);
-
-            // WinForms.MessageBox.Show( msg, Caption, WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Error );
-            TaskDialog d = new TaskDialog(Caption) { MainIcon = TaskDialogIcon.TaskDialogIconWarning, MainInstruction = msg };
+            var d = new TaskDialog(Caption) { MainIcon = TaskDialogIcon.TaskDialogIconWarning, MainInstruction = msg };
             d.Show();
         }
 
@@ -144,13 +141,7 @@ namespace Revit_Utilities.Utilities
         /// </summary>
         public static bool QuestionMsg(string msg)
         {
-            Debug.WriteLine(msg);
-
-            // bool rc = WinForms.DialogResult.Yes
-            // == WinForms.MessageBox.Show( msg, Caption, WinForms.MessageBoxButtons.YesNo, WinForms.MessageBoxIcon.Question );
-            // Debug.WriteLine( rc ? "Yes" : "No" );
-            // return rc;
-            TaskDialog d = new TaskDialog(Caption)
+            var d = new TaskDialog(Caption)
                            {
                                MainIcon = TaskDialogIcon.TaskDialogIconNone,
                                MainInstruction = msg,
@@ -167,10 +158,7 @@ namespace Revit_Utilities.Utilities
         {
             Debug.WriteLine(msg);
 
-            // WinForms.DialogResult rc = WinForms.MessageBox.Show( msg, Caption, WinForms.MessageBoxButtons.YesNoCancel, WinForms.MessageBoxIcon.Question );
-            // Debug.WriteLine( rc.ToString() );
-            // return rc;
-            TaskDialog d = new TaskDialog(Caption)
+            var d = new TaskDialog(Caption)
                            {
                                MainIcon = TaskDialogIcon.TaskDialogIconNone,
                                MainInstruction = msg,
@@ -202,10 +190,13 @@ namespace Revit_Utilities.Utilities
         /// <param name="uidoc">
         /// The uidoc.
         /// </param>
+        /// <param name="type">
+        /// The type.
+        /// </param>
         /// <returns>
         /// The <see cref="Element"/>.
         /// </returns>
-        public static Element GetSingleSelectedElementOrPrompt(UIDocument uidoc)
+        public static Element GetSingleSelectedElementOrPrompt(UIDocument uidoc, Type type)
         {
             Element e = null;
 
@@ -216,47 +207,25 @@ namespace Revit_Utilities.Utilities
             {
                 // ElementSetIterator iter = ss.ForwardIterator();
                 // iter.MoveNext();
-                // e = iter.Current as Element;
-                e = uidoc.Document.GetElement(ids.First());
-            }
-            else
-            {
-                DialogResult result = DialogResult.OK;
-                while ((e == null) && (DialogResult.OK == result))
+                Element e2 = uidoc.Document.GetElement(ids.First());
+                Type t = e2.GetType();
+                if ((t == type) || t.IsSubclassOf(type))
                 {
-                    string sid;
-                    using (ElementIdForm form = new ElementIdForm())
-                    {
-                        result = form.ShowDialog();
-                        sid = form.ElementId;
-                    }
+                    e = e2;
+                }
+            }
 
-                    if (DialogResult.OK == result)
-                    {
-                        if (sid.Length == 0)
-                        {
-                            try
-                            {
-                                Reference r = uidoc.Selection.PickObject(ObjectType.Element, "Please pick an element");
+            if (e == null)
+            {
+                try
+                {
+                    Reference r = uidoc.Selection.PickObject(ObjectType.Element, new TypeSelectionFilter(type), $"Please pick a {type.Name} element");
 
-                                // e = r.Element; // 2011
-                                e = uidoc.Document.GetElement(r); // 2012
-                            }
-                            catch (OperationCanceledException)
-                            {
-                            }
-                        }
-                        else
-                        {
-                            ElementId id = new ElementId(int.Parse((sid)));
-
-                            e = uidoc.Document.GetElement(id);
-                            if (e == null)
-                            {
-                                ErrorMsg($"Invalid element id '{sid}'.");
-                            }
-                        }
-                    }
+                    // e = r.Element; // 2011
+                    e = uidoc.Document.GetElement(r); // 2012
+                }
+                catch (OperationCanceledException)
+                {
                 }
             }
 
@@ -301,54 +270,6 @@ namespace Revit_Utilities.Utilities
             {
                 return true;
             }
-        }
-
-        /// <summary>
-        /// The get single selected element or prompt.
-        /// </summary>
-        /// <param name="uidoc">
-        /// The uidoc.
-        /// </param>
-        /// <param name="type">
-        /// The type.
-        /// </param>
-        /// <returns>
-        /// The <see cref="Element"/>.
-        /// </returns>
-        public static Element GetSingleSelectedElementOrPrompt(UIDocument uidoc, Type type)
-        {
-            Element e = null;
-
-            // ElementSet ss = uidoc.Selection.Elements; // 2014
-            ICollection<ElementId> ids = uidoc.Selection.GetElementIds(); // 2015
-
-            if (1 == ids.Count)
-            {
-                // ElementSetIterator iter = ss.ForwardIterator();
-                // iter.MoveNext();
-                Element e2 = uidoc.Document.GetElement(ids.First());
-                Type t = e2.GetType();
-                if (t.Equals(type) || t.IsSubclassOf(type))
-                {
-                    e = e2 as Element;
-                }
-            }
-
-            if (null == e)
-            {
-                try
-                {
-                    Reference r = uidoc.Selection.PickObject(ObjectType.Element, new TypeSelectionFilter(type), $"Please pick a {type.Name} element");
-
-                    // e = r.Element; // 2011
-                    e = uidoc.Document.GetElement(r); // 2012
-                }
-                catch (OperationCanceledException)
-                {
-                }
-            }
-
-            return e;
         }
 
         #endregion // Selection
@@ -413,7 +334,7 @@ namespace Revit_Utilities.Utilities
         {
             FamilySymbol s = GetFamilySymbols(doc, bic).FirstElement() as FamilySymbol;
 
-            Debug.Assert(null != s, $"expected at least one {bic.ToString()} symbol in project");
+            Debug.Assert(s != null, $"expected at least one {bic.ToString()} symbol in project");
 
             return s;
         }
@@ -422,45 +343,34 @@ namespace Revit_Utilities.Utilities
         /// Return the category of a family by asking its first symbol.
         /// You can determine the family category from any of its symbols.
         /// </summary>
-        static Category FamilyCategory(Family f)
+        private static Category FamilyCategory(Family f)
         {
             Document doc = f.Document;
-            Category c = null;
 
-            // foreach( FamilySymbol s in f.Symbols ) // 2014
-            foreach (ElementId id in f.GetFamilySymbolIds())
-            {
-                // 2015
-                Element symbol = doc.GetElement(id);
-                c = symbol.Category;
-                break;
-            }
-
-            return c;
+            return f
+                .GetFamilySymbolIds()
+                .Select(id => doc.GetElement(id))
+                .Select(symbol => symbol.Category)
+                .FirstOrDefault();
         }
 
         /// <summary>
         /// Return all families matching the given built-in category
         /// in the given document. Normally, one would simply use
-        ///
         /// GetElementsOfType( doc, typeof( FamilyInstance ), bic );
-        ///
         /// Unfortunately, this does not work, because the Category
         /// property of families os often unimplemented, cf.
-        /// http://thebuildingcoder.typepad.com/blog/2009/01/family-category-and-filtering.html
-        /// and Clarify case 1258171 [Category filter problems].
         /// </summary>
         public static IEnumerable<Family> GetFamilies(Document doc, BuiltInCategory bic)
         {
             FilteredElementCollector collector = new FilteredElementCollector(doc);
 
-            // collector.OfCategory( bic ); // this does not work
             collector.OfClass(typeof(Family));
 
             Category cat;
 
             IEnumerable<Element> familiesOfCategory =
-                from f in collector where ((null != (cat = FamilyCategory(f as Family))) && cat.Id.IntegerValue.Equals((int)bic)) select f;
+                collector.Where(f => ((cat = FamilyCategory(f as Family)) != null) && cat.Id.IntegerValue.Equals((int)bic));
 
             return familiesOfCategory.Cast<Family>();
         }
@@ -473,23 +383,6 @@ namespace Revit_Utilities.Utilities
             FilteredElementCollector collector = new FilteredElementCollector(doc);
             collector.OfClass(typeof(Family));
 
-#if USE_LINQ
-      // 
-      // using LINQ:
-      // 
-      IEnumerable<Element> familiesByName =
-        from f in collector
-        where f.Name.Equals( family_name )
-        select f;
-
-      return familiesByName.Cast<Family>();
-#endif // USE_LINQ
-
-            // using an anonymous method to define a named method:
-            // Func<Element, bool> nameEquals = e => e.Name.Equals( family_name );
-            // return collector.Where<Element>( nameEquals ).Cast<Family>();
-
-            // using an anonymous method:
             return collector.Where<Element>(e => e.Name.Equals(family_name)).Cast<Family>();
         }
 
@@ -502,31 +395,19 @@ namespace Revit_Utilities.Utilities
         /// <returns>Collection of families matching the search criteria.</returns>
         public static IEnumerable<Family> GetFamilies(Document doc, string family_name, bool search_for_substring)
         {
-            FilteredElementCollector collector = new FilteredElementCollector(doc);
+            var collector = new FilteredElementCollector(doc);
             collector.OfClass(typeof(Family));
 
-#if USE_LINQ
-      // 
-      // using LINQ:
-      // 
-      IEnumerable<Element> familiesByName =
-        from f in collector
-        where ( search_for_substring ? f.Name.Contains( family_name ) : f.Name.Equals( family_name ) )
-        select f;
-
-      return familiesByName.Cast<Family>();
-#endif // USE_LINQ
-
-            // using an anonymous method to define a named method:
-            // Func<Element, bool> nameMatches = e
-            // => ( search_for_substring ? e.Name.Contains( family_name ) : e.Name.Equals( family_name ) );
-            // return collector.Where<Element>( nameMatches ).Cast<Family>();
-
-            // using an anonymous method:
             return collector.Where<Element>(e => (search_for_substring ? e.Name.Contains(family_name) : e.Name.Equals(family_name))).Cast<Family>();
         }
 
-        static public void MyTest(Document doc)
+        /// <summary>
+        /// The my test.
+        /// </summary>
+        /// <param name="doc">
+        /// The doc.
+        /// </param>
+        public static void MyTest(Document doc)
         {
             string familyName = "Single-Flush";
 
@@ -534,21 +415,16 @@ namespace Revit_Utilities.Utilities
             FilteredElementCollector fec = new FilteredElementCollector(doc);
             fec.OfClass(typeof(Family));
 
-            Func<Element, bool> nameEquals = e => e.Name.Equals(familyName);
-
-            Family f = fec.First<Element>(nameEquals) as Family;
+            Family f = fec.First<Element>(e => e.Name.Equals(familyName)) as Family;
 
             // get the symbols of that family
             FamilySymbolFilter fsf = new FamilySymbolFilter(f.Id);
             fec = new FilteredElementCollector(doc);
             fec.WherePasses(fsf);
 
-            // list them
-            Func<Element, string> getName = e => e.Name;
+            string str = string.Join("\n", fec.Select<Element, string>(e => e.Name).ToArray<string>());
 
-            string str = string.Join("\n", fec.Select<Element, string>(getName).ToArray<string>());
-
-            System.Windows.Forms.MessageBox.Show(str.ToString(), "FamilySymbols of " + familyName);
+           MessageBox.Show(str.ToString(), @"FamilySymbols of " + familyName);
         }
 
         /// <summary>
@@ -563,11 +439,11 @@ namespace Revit_Utilities.Utilities
 
             foreach (Element e in levels)
             {
-                if (null == levelBottom)
+                if (levelBottom == null)
                 {
                     levelBottom = e as Level;
                 }
-                else if (null == levelTop)
+                else if (levelTop == null)
                 {
                     levelTop = e as Level;
                 }
@@ -584,7 +460,7 @@ namespace Revit_Utilities.Utilities
                 levelBottom = tmp;
             }
 
-            return (null != levelBottom) && (null != levelTop);
+            return (levelBottom != null) && (levelTop != null);
         }
 
         /// <summary>
@@ -595,11 +471,11 @@ namespace Revit_Utilities.Utilities
         {
             List<Element> elements;
 
-            bool isName = targetCategory.GetType().Equals(typeof(string));
+            bool isName = targetCategory is string;
 
             if (isName)
             {
-                Category cat = doc.Settings.Categories.get_Item(targetCategory as string);
+                Category cat = doc.Settings.Categories.get_Item((string)targetCategory);
                 FilteredElementCollector collector = new FilteredElementCollector(doc);
                 collector.OfCategoryId(cat.Id);
                 elements = new List<Element>(collector);
@@ -610,13 +486,6 @@ namespace Revit_Utilities.Utilities
 
                 collector.OfCategory((BuiltInCategory)targetCategory);
 
-                // I removed this to test attaching a shared 
-                // parameter to Material elements:
-                // var model_elements = from e in collector
-                // where ( null != e.Category && e.Category.HasMaterialQuantities )
-                // select e;
-
-                // elements = model_elements.ToList<Element>();
                 elements = collector.ToList<Element>();
             }
 
@@ -650,16 +519,7 @@ namespace Revit_Utilities.Utilities
             switch (param.StorageType)
             {
                 case StorageType.Double:
-                    // the internal database unit for all lengths is feet.
-                    // for instance, if a given room perimeter is returned as
-                    // 102.36 as a double and the display unit is millimeters,
-                    // then the length will be displayed as
-                    // peri = 102.36220472440
-                    // peri * 12 * 25.4
-                    // 31200 mm
-                    // s = param.AsValueString(); // value seen by user, in display units
-                    // s = param.AsDouble().ToString(); // if not using not using LabUtils.RealString()
-                    s = RealString(param.AsDouble()); // raw database value in internal units, e.g. feet
+                    s = RealString(param.AsDouble()); 
                     break;
 
                 case StorageType.Integer:
@@ -699,7 +559,7 @@ namespace Revit_Utilities.Utilities
 
         static string BuiltInCategoryString(int i)
         {
-            if (0 == _min_bic)
+            if (_min_bic == 0)
             {
                 SetMinAndMaxBuiltInCategory();
             }
@@ -714,13 +574,13 @@ namespace Revit_Utilities.Utilities
         public static string GetParameterValue2(Parameter param, Document doc)
         {
             string s;
-            if ((StorageType.ElementId == param.StorageType) && (null != doc))
+            if ((StorageType.ElementId == param.StorageType) && (doc != null))
             {
                 ElementId id = param.AsElementId();
 
                 int i = id.IntegerValue;
 
-                if (0 > i)
+                if (i < 0)
                 {
                     s = i.ToString() + BuiltInCategoryString(i);
                 }
@@ -784,7 +644,7 @@ namespace Revit_Utilities.Utilities
         }
 
         /// <summary>
-        /// Helper to get shared params group.
+        /// Helper to get shared parameters group.
         /// </summary>
         public static DefinitionGroup GetOrCreateSharedParamsGroup(DefinitionFile sharedParametersFile, string groupName)
         {
@@ -815,12 +675,9 @@ namespace Revit_Utilities.Utilities
             {
                 try
                 {
-                    // definition = defGroup.Definitions.Create( defName, defType, visible ); // 2014
-                    ExternalDefinitionCreationOptions opt = new ExternalDefinitionCreationOptions(defName, defType); // 2015
+                    var opt = new ExternalDefinitionCreationOptions(defName, defType) { Visible = visible }; 
 
-                    opt.Visible = visible;
-
-                    definition = defGroup.Definitions.Create(opt); // 2015
+                    definition = defGroup.Definitions.Create(opt); 
                 }
                 catch (Exception)
                 {
@@ -851,6 +708,7 @@ namespace Revit_Utilities.Utilities
             }
             catch (Exception)
             {
+                // ignored
             }
 
             return guid;
