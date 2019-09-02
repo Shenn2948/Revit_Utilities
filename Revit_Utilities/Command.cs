@@ -59,59 +59,46 @@ namespace Revit_Utilities
             return Result.Succeeded;
         }
 
-        private static void GetElementsParameters(Document doc)
+        private static Dictionary<string, List<Element>> GetFilteredElementsByCategory(Document doc)
         {
-            Stopwatch sw = Stopwatch.StartNew();
+            var sortedElements = new Dictionary<string, List<Element>>();
 
-            Dictionary<string, List<Element>> sortedElements = new Dictionary<string, List<Element>>();
-
-            var cats = new FilteredElementCollector(doc)
-                .WhereElementIsNotElementType()
-                .Where(e => (e.Category != null) && e.Category.HasMaterialQuantities)
-                .Select(e => (BuiltInCategory)e.Category.Id.IntegerValue)
-                .ToList();
-
-            IList<ElementFilter> a = cats
-                .Select(bic => new ElementCategoryFilter(bic))
-                .Cast<ElementFilter>()
-                .ToList();
-
-            LogicalOrFilter categoryFilter = new LogicalOrFilter(a);
-
-            FilteredElementCollector els = new FilteredElementCollector(doc)
+            var els = new FilteredElementCollector(doc)
                 .WhereElementIsNotElementType()
                 .WhereElementIsViewIndependent()
-                .WherePasses(categoryFilter);
+                .Where(e => (e.Category != null) && e.Category.HasMaterialQuantities);
 
             foreach (Element e in els)
             {
-                Category category = e.Category;
-
-                if (category != null)
+                if (e.Category != null)
                 {
                     // If this category was not yet encountered, add it and create a new container for its elements.
-                    if (!sortedElements.ContainsKey(category.Name))
+                    if (!sortedElements.ContainsKey(e.Category.Name))
                     {
-                        sortedElements.Add(category.Name, new List<Element>());
+                        sortedElements.Add(e.Category.Name, new List<Element>());
                     }
 
-                    sortedElements[category.Name].Add(e);
+                    sortedElements[e.Category.Name].Add(e);
                 }
             }
 
+            return sortedElements;
+        }
+
+        private static void GetElementsParameters(Document doc)
+        {
+            var sw = Stopwatch.StartNew();
+
+            var sortedElements = GetFilteredElementsByCategory(doc);
+
             var excel = new X.Application { Visible = true };
             var workbook = excel.Workbooks.Add(Missing.Value);
-
-            var keys = new List<string>(sortedElements.Keys);
-
-            keys.Sort();
-            keys.Reverse();
 
             bool first = true;
             int numElements = 0;
             int numCategories = sortedElements.Count;
 
-            foreach (var categoryName in keys)
+            foreach (var categoryName in sortedElements.Keys)
             {
                 List<Element> elementSet = sortedElements[categoryName];
 
@@ -138,7 +125,7 @@ namespace Revit_Utilities
 
                 // Determine the names of all parameters 
                 // defined for the elements in this set.
-                List<string> paramNames = new List<string>();
+                var paramNames = new List<string>();
 
                 foreach (Element e in elementSet)
                 {
