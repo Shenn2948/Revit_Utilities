@@ -56,7 +56,6 @@
   <ItemGroup>
     <Compile Include="Command.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Utilities\LabConstants.cs" />
     <Compile Include="Utilities\LabUtils.cs" />
     <Compile Include="Utilities\ResultsHelper.cs" />
   </ItemGroup>

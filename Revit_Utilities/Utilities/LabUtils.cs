@@ -11,8 +11,6 @@ namespace Revit_Utilities.Utilities
     using Autodesk.Revit.UI;
     using Autodesk.Revit.UI.Selection;
 
-    using XtraCs;
-
     using Application = Autodesk.Revit.ApplicationServices.Application;
 
     /// <summary>
@@ -20,6 +18,10 @@ namespace Revit_Utilities.Utilities
     /// </summary>
     public static class LabUtils
     {
+        public const string SharedParamFilePath = TempDir + "SharedParams.txt";
+
+        private const string TempDir = "C:/tmp/";
+
         #region Formatting and message handlers
 
         public const string Caption = "Revit API Labs";
@@ -142,12 +144,12 @@ namespace Revit_Utilities.Utilities
         public static bool QuestionMsg(string msg)
         {
             var d = new TaskDialog(Caption)
-                           {
-                               MainIcon = TaskDialogIcon.TaskDialogIconNone,
-                               MainInstruction = msg,
-                               CommonButtons = TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.No,
-                               DefaultButton = TaskDialogResult.Yes
-                           };
+                    {
+                        MainIcon = TaskDialogIcon.TaskDialogIconNone,
+                        MainInstruction = msg,
+                        CommonButtons = TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.No,
+                        DefaultButton = TaskDialogResult.Yes
+                    };
             return TaskDialogResult.Yes == d.Show();
         }
 
@@ -159,12 +161,12 @@ namespace Revit_Utilities.Utilities
             Debug.WriteLine(msg);
 
             var d = new TaskDialog(Caption)
-                           {
-                               MainIcon = TaskDialogIcon.TaskDialogIconNone,
-                               MainInstruction = msg,
-                               CommonButtons = TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.No | TaskDialogCommonButtons.Cancel,
-                               DefaultButton = TaskDialogResult.Yes
-                           };
+                    {
+                        MainIcon = TaskDialogIcon.TaskDialogIconNone,
+                        MainInstruction = msg,
+                        CommonButtons = TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.No | TaskDialogCommonButtons.Cancel,
+                        DefaultButton = TaskDialogResult.Yes
+                    };
             return d.Show();
         }
 
@@ -188,7 +190,7 @@ namespace Revit_Utilities.Utilities
         /// The get single selected element or prompt.
         /// </summary>
         /// <param name="uidoc">
-        /// The uidoc.
+        /// The document.
         /// </param>
         /// <param name="type">
         /// The type.
@@ -266,7 +268,7 @@ namespace Revit_Utilities.Utilities
             /// <param name="refer">A candidate reference in selection operation.</param>
             /// <param name="point">The 3D position of the mouse on the candidate reference.</param>
             /// <returns>Return true to allow the user to select this candidate reference.</returns>
-            public bool AllowReference(Reference r, XYZ p)
+            public bool AllowReference(Reference refer, XYZ point)
             {
                 return true;
             }
@@ -299,7 +301,6 @@ namespace Revit_Utilities.Utilities
 
         /// <summary>
         /// Retrieve all standard family instances for a given category.
-        /// Todo: Compare this with the FamilyInstanceFilter class.
         /// </summary>
         public static FilteredElementCollector GetFamilyInstances(Document doc, BuiltInCategory bic)
         {
@@ -319,7 +320,6 @@ namespace Revit_Utilities.Utilities
         /// <summary>
         /// Return all family symbols in the given document
         /// matching the given built-in category.
-        /// Todo: Compare this with the FamilySymbolFilter class.
         /// </summary>
         public static FilteredElementCollector GetFamilySymbols(Document doc, BuiltInCategory bic)
         {
@@ -347,11 +347,7 @@ namespace Revit_Utilities.Utilities
         {
             Document doc = f.Document;
 
-            return f
-                .GetFamilySymbolIds()
-                .Select(id => doc.GetElement(id))
-                .Select(symbol => symbol.Category)
-                .FirstOrDefault();
+            return f.GetFamilySymbolIds().Select(id => doc.GetElement(id)).Select(symbol => symbol.Category).FirstOrDefault();
         }
 
         /// <summary>
@@ -424,7 +420,7 @@ namespace Revit_Utilities.Utilities
 
             string str = string.Join("\n", fec.Select<Element, string>(e => e.Name).ToArray<string>());
 
-           MessageBox.Show(str.ToString(), @"FamilySymbols of " + familyName);
+            MessageBox.Show(str.ToString(), @"FamilySymbols of " + familyName);
         }
 
         /// <summary>
@@ -453,7 +449,7 @@ namespace Revit_Utilities.Utilities
                 }
             }
 
-            if (levelTop.Elevation < levelBottom.Elevation)
+            if ((levelTop != null) && ((levelBottom != null) && (levelTop.Elevation < levelBottom.Elevation)))
             {
                 Level tmp = levelTop;
                 levelTop = levelBottom;
@@ -476,7 +472,7 @@ namespace Revit_Utilities.Utilities
             if (isName)
             {
                 Category cat = doc.Settings.Categories.get_Item((string)targetCategory);
-                FilteredElementCollector collector = new FilteredElementCollector(doc);
+                var collector = new FilteredElementCollector(doc);
                 collector.OfCategoryId(cat.Id);
                 elements = new List<Element>(collector);
             }
@@ -519,7 +515,7 @@ namespace Revit_Utilities.Utilities
             switch (param.StorageType)
             {
                 case StorageType.Double:
-                    s = RealString(param.AsDouble()); 
+                    s = RealString(param.AsDouble());
                     break;
 
                 case StorageType.Integer:
@@ -621,7 +617,7 @@ namespace Revit_Utilities.Utilities
 
             if (sharedParamsFileName.Length == 0)
             {
-                string path = LabConstants.SharedParamFilePath;
+                string path = SharedParamFilePath;
                 var stream = new StreamWriter(path);
                 stream.Close();
                 app.SharedParametersFilename = path;
@@ -675,9 +671,9 @@ namespace Revit_Utilities.Utilities
             {
                 try
                 {
-                    var opt = new ExternalDefinitionCreationOptions(defName, defType) { Visible = visible }; 
+                    var opt = new ExternalDefinitionCreationOptions(defName, defType) { Visible = visible };
 
-                    definition = defGroup.Definitions.Create(opt); 
+                    definition = defGroup.Definitions.Create(opt);
                 }
                 catch (Exception)
                 {
