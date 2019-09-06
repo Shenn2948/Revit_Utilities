@@ -9,6 +9,7 @@ namespace Revit_Utilities
     using Autodesk.Revit.Attributes;
     using Autodesk.Revit.DB;
     using Autodesk.Revit.UI;
+    using Autodesk.Revit.UI.Selection;
 
     using Revit_Utilities.Utilities;
 
@@ -24,153 +25,149 @@ namespace Revit_Utilities
             Application app = uiapp.Application;
             Document doc = uidoc.Document;
 
-            var pipeFittingsDictionary2 = new FilteredElementCollector(doc).WhereElementIsNotElementType()
-                .WhereElementIsViewIndependent()
-                .OfCategory(BuiltInCategory.OST_PipeFitting)
-                .OfClass(typeof(FamilyInstance))
-                .Cast<FamilyInstance>()
-                .Where(i => i.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные") && i.Symbol.FamilyName.Equals("801_СварнойШов_ОБЩИЙ"))
-                .SelectMany(i => i.MEPModel.ConnectorManager.Connectors.Cast<Connector>().Select(e => e.AllRefs.Cast<Connector>()).FirstOrDefault())
-                .GroupBy(e => e.Owner.Name, e => e)
-                .Where(
-                    e => e.Key.Contains("Азот") || e.Key.Contains("Вода") || e.Key.Contains("Газ") || e.Key.Contains("Дренаж")
-                         || e.Key.Contains("Нефтепродукты") || e.Key.Contains("Пенообразователь") || e.Key.Contains("ХимическиеРеагенты")
-                         || e.Key.Contains("Канализация"))
-                .ToDictionary(e => e.Key, e => e.ToList());
-
-
-
-
-
-
-
-
-
-
-
+            Reference sel = uidoc.Selection.PickObject(ObjectType.Element);
+            Element element = doc.GetElement(sel);
 
             using (Transaction tran = new Transaction(doc))
             {
-                tran.Start("Change colors");
+                tran.Start("Change");
 
-                foreach (var item in pipeFittingsDictionary2)
-                {
-                    foreach (Connector connector in item.Value)
-                    {
-                        foreach (Connector connectorAllRef in connector.AllRefs)
-                        {
-                            Parameter p = connectorAllRef.Owner.GetOrderedParameters().FirstOrDefault(i => i.Definition.Name.Equals("МатериалФитинга"));
+                // Change(doc, "0_153_255", "Азот");
+                // Change(doc, "0_96_0", "Вода");
+                // Change(doc, "255_220_112", "Газ");
+                Change(doc, "192_192_192", "Дренаж", element);
 
-                            if (p != null)
-                            {
-                                if (item.Key.Contains("Азот"))
-                                {
-                                    SetValue(p, "0_153_255");
-                                }
-
-                                if (item.Key.Contains("Вода"))
-                                {
-                                    SetValue(p, "0_96_0");
-                                }
-
-                                if (item.Key.Contains("Газ"))
-                                {
-                                    SetValue(p, "255_220_112");
-                                }
-
-                                if (item.Key.Contains("Дренаж"))
-                                {
-                                    SetValue(p, "192_192_192");
-                                }
-
-                                if (item.Key.Contains("Нефтепродукты"))
-                                {
-                                    SetValue(p, "160_80_0");
-                                }
-
-                                if (item.Key.Contains("Пенообразователь"))
-                                {
-                                    SetValue(p, "224_0_0");
-                                }
-
-                                if (item.Key.Contains("ХимическиеРеагенты"))
-                                {
-                                    SetValue(p, "128_96_0");
-                                }
-
-                                if (item.Key.Contains("Канализация"))
-                                {
-                                    SetValue(p, "192_192_192");
-                                }
-                            }
-                        }
-                    }
-                }
-
+                // Change(doc, "192_192_192", "Канализация");
+                // Change(doc, "160_80_0", "Нефтепродукты");
+                // Change(doc, "224_0_0", "Пенообразователь");
+                // Change(doc, "128_96_0", "ХимическиеРеагенты");
                 tran.Commit();
             }
 
             return Result.Succeeded;
         }
 
-        public static void SetValue(Parameter p, object value)
+        private static void Change(Document doc, string color, string pipeType, Element element)
         {
-            try
-            {
-                if (value is string s1)
-                {
-                    if (p.SetValueString(s1))
-                    {
-                        return;
-                    }
-                }
+            var filter = new FilteredElementCollector(doc).WhereElementIsNotElementType()
+                .WhereElementIsViewIndependent()
+                .OfCategory(BuiltInCategory.OST_PipeFitting)
+                .OfClass(typeof(FamilyInstance))
+                .Cast<FamilyInstance>()
+                .Where(i => i.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные") && i.Symbol.FamilyName.Equals("801_СварнойШов_ОБЩИЙ"));
 
-                switch (p.StorageType)
-                {
-                    case StorageType.None:
-                        break;
-                    case StorageType.Double:
-                        p.Set(value is string o ? double.Parse(o) : Convert.ToDouble(value));
-                        break;
-                    case StorageType.Integer:
-                        p.Set(value is string v ? int.Parse(v) : Convert.ToInt32(value));
-                        break;
-                    case StorageType.ElementId:
-                        if (value.GetType() == typeof(ElementId))
-                        {
-                            p.Set(value as ElementId);
-                        }
-                        else if (value is string s)
-                        {
-                            p.Set(new ElementId(int.Parse(s)));
-                        }
-                        else
-                        {
-                            p.Set(new ElementId(Convert.ToInt32(value)));
-                        }
+            ElementId material = new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals(color))?.Id;
 
-                        break;
-                    case StorageType.String:
-                        p.Set(value.ToString());
-                        break;
-                }
-            }
-            catch
+            List<FamilyInstance> chemicalPipe = (from e in filter
+                                                 from Connector connector in e.MEPModel.ConnectorManager.Connectors
+                                                 from Connector reference in connector.AllRefs
+                                                 where reference.Owner.Name.Contains(pipeType)
+                                                 select e).ToList();
+
+            List<Element> fittingConnectors = (from e in chemicalPipe
+                                               from Connector connector in e.MEPModel.ConnectorManager.Connectors
+                                               from Connector reference in connector.AllRefs
+                                               where (reference.Owner.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeFitting)
+                                                     && !reference.Owner.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные")
+                                               select reference.Owner).ToList();
+
+            foreach (Element connector in fittingConnectors)
             {
-                throw new Exception("Invalid Value Input!");
+                Parameter p = connector.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals("МатериалФитинга"));
+                p?.Set(material);
             }
         }
 
-        private class ConnectorEqualityComparer : IEqualityComparer<KeyValuePair<FamilyInstance, List<Connector>>>
+        private static void ChangeColor(Document doc, Element element)
         {
-            public bool Equals(KeyValuePair<FamilyInstance, List<Connector>> x, KeyValuePair<FamilyInstance, List<Connector>> y)
-            {
-                return x.Value.Where((t, i) => t.Owner.Name.Equals(y.Value[i].Owner.Name)).Any();
-            }
+            var filter = new FilteredElementCollector(doc).WhereElementIsNotElementType()
+                .WhereElementIsViewIndependent()
+                .OfCategory(BuiltInCategory.OST_PipeFitting)
+                .OfClass(typeof(FamilyInstance))
+                .Cast<FamilyInstance>()
+                .Where(i => i.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные") && i.Symbol.FamilyName.Equals("801_СварнойШов_ОБЩИЙ"))
+                .SelectMany(i => i.MEPModel.ConnectorManager.Connectors.Cast<Connector>());
 
-            public int GetHashCode(KeyValuePair<FamilyInstance, List<Connector>> obj)
+            var pipeFittingsDictionary = new FilteredElementCollector(doc).WhereElementIsNotElementType()
+                .WhereElementIsViewIndependent()
+                .OfCategory(BuiltInCategory.OST_PipeFitting)
+                .OfClass(typeof(FamilyInstance))
+                .Cast<FamilyInstance>()
+                .Where(i => i.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные") && i.Symbol.FamilyName.Equals("801_СварнойШов_ОБЩИЙ"))
+                .SelectMany(i => i.MEPModel.ConnectorManager.Connectors.Cast<Connector>().SelectMany(e => e.AllRefs.Cast<Connector>().ToList()))
+                .Where(
+                    e => e.Owner.Name.Contains("Азот") || e.Owner.Name.Contains("Вода") || e.Owner.Name.Contains("Газ") || e.Owner.Name.Contains("Дренаж")
+                         || e.Owner.Name.Contains("Канализация") || e.Owner.Name.Contains("Нефтепродукты") || e.Owner.Name.Contains("Пенообразователь")
+                         || e.Owner.Name.Contains("ХимическиеРеагенты"))
+                .ToList();
+
+            var elementsThatNeedToBeColored = new FilteredElementCollector(doc).WhereElementIsNotElementType()
+                .WhereElementIsViewIndependent()
+                .OfCategory(BuiltInCategory.OST_PipeFitting)
+                .OfClass(typeof(FamilyInstance))
+                .Cast<FamilyInstance>()
+                .Where(i => i.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные") && i.Symbol.FamilyName.Equals("801_СварнойШов_ОБЩИЙ"))
+                .SelectMany(i => i.MEPModel.ConnectorManager.Connectors.Cast<Connector>())
+                .SelectMany(e => e.AllRefs.Cast<Connector>())
+                .Where(
+                    e => (e.Owner.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeFitting)
+                         && !e.Owner.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные"))
+                .GroupBy(e => e.Owner.Name, e => e)
+                .ToDictionary(e => e.Key, e => e.ToList());
+
+            int c = 0;
+
+            // foreach (var item in pipeFittingsDictionary)
+            // {
+            // if (item.Key.Contains("Азот"))
+            // {
+            // ChangeColor(element, doc, item.Value, "0_153_255");
+            // }
+            // if (item.Key.Contains("Вода"))
+            // {
+            // ChangeColor(element, doc, item.Value, "0_96_0");
+            // }
+            // if (item.Key.Contains("Газ"))
+            // {
+            // ChangeColor(element, doc, item.Value, "255_220_112");
+            // }
+            // if (item.Key.Contains("Дренаж"))
+            // {
+            // ChangeColor(element, doc, item.Value, "192_192_192");
+            // }
+            // if (item.Key.Contains("Канализация"))
+            // {
+            // ChangeColor(element, doc, item.Value, "192_192_192");
+            // }
+            // if (item.Key.Contains("Нефтепродукты"))
+            // {
+            // ChangeColor(element, doc, item.Value, "160_80_0");
+            // }
+            // if (item.Key.Contains("Пенообразователь"))
+            // {
+            // ChangeColor(element, doc, item.Value, "224_0_0");
+            // }
+            // if (item.Key.Contains("ХимическиеРеагенты"))
+            // {
+            // ChangeColor(element, doc, item.Value, "128_96_0");
+            // }
+            // }
+        }
+
+        private static void ChangeColor(Document doc, List<Connector> items, string color)
+        {
+            ElementId material = new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals(color))?.Id;
+
+            foreach (var connector in items)
             {
-                return obj.GetHashCode();
+                foreach (Connector connectorManagerConnector in connector.ConnectorManager.Connectors)
+                {
+                    foreach (Connector reference in connectorManagerConnector.AllRefs)
+                    {
+                        // Parameter p = reference.Owner.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals("МатериалФитинга"));
+                        // p?.Set(material);
+                    }
+                }
             }
         }
     }
