@@ -1,5 +1,6 @@
 namespace Revit_Utilities.VM
 {
+    using System;
     using System.Collections.Generic;
     using System.Data;
     using System.Diagnostics;
@@ -12,14 +13,28 @@ namespace Revit_Utilities.VM
     {
         public static void ChangeColor(Document doc)
         {
+            try
+            {
+                Change(doc);
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("Recolor", ex.Message);
+            }
+        }
+
+        private static void Change(Document doc)
+        {
             var sw = Stopwatch.StartNew();
 
-            List<FamilyInstance> welds = GetWeld(doc);
-            
+            List<FamilyInstance> welds = GetWeld(doc) ?? throw new ArgumentNullException(
+                                             nameof(welds),
+                                             "Проблема в нахождении сварки, проверьте наименования семейств");
+
             using (Transaction tran = new Transaction(doc))
             {
                 tran.Start("Change");
-            
+
                 ChangeColor(doc, welds, "Азот");
                 ChangeColor(doc, welds, "Вода");
                 ChangeColor(doc, welds, "Газ");
@@ -28,7 +43,7 @@ namespace Revit_Utilities.VM
                 ChangeColor(doc, welds, "Нефтепродукты");
                 ChangeColor(doc, welds, "Пенообразователь");
                 ChangeColor(doc, welds, "ХимическиеРеагенты");
-            
+
                 tran.Commit();
             }
 
@@ -39,10 +54,16 @@ namespace Revit_Utilities.VM
 
         private static void ChangeColor(Document doc, IEnumerable<FamilyInstance> welds, string pipeType)
         {
-            ElementId material = GetMaterialId(doc, pipeType);
+            ElementId material = GetMaterialId(doc, pipeType) ?? throw new ArgumentNullException(
+                                     nameof(material),
+                                     "Проблема в нахождении материалов, проверьте наименования материалов");
 
-            IEnumerable<FamilyInstance> pipeTypes = GetPipeType(welds, pipeType);
-            IEnumerable<Element> connectorsToRecolor = GetElementsToRecolor(pipeTypes);
+            IEnumerable<FamilyInstance> pipeTypes = GetPipeType(welds, pipeType) ?? throw new ArgumentNullException(
+                                                        nameof(pipeTypes),
+                                                        "Проблема в нахождении типов труб, проверьте наименования семейств");
+            IEnumerable<Element> connectorsToRecolor = GetElementsToRecolor(pipeTypes) ?? throw new ArgumentNullException(
+                                                           nameof(connectorsToRecolor),
+                                                           "Проблема в нахождении коннекторов, проверьте наименования семейств");
 
             SetColor(connectorsToRecolor, material);
         }
@@ -106,8 +127,11 @@ namespace Revit_Utilities.VM
         {
             foreach (Element element in elements)
             {
-                Parameter p = element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals("МатериалФитинга"));
-                p?.Set(materialId);
+                Parameter p = element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals("МатериалФитинга"))
+                              ?? throw new ArgumentNullException(
+                                  nameof(p),
+                                  "Проблема в нахождении параметра \"МатериалФитинга\", проверьте наименования параметров");
+                p.Set(materialId);
             }
         }
     }

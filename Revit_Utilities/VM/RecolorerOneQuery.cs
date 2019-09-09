@@ -1,5 +1,6 @@
 namespace Revit_Utilities.VM
 {
+    using System;
     using System.Collections.Generic;
     using System.Data;
     using System.Diagnostics;
@@ -12,7 +13,14 @@ namespace Revit_Utilities.VM
     {
         public static void ChangeColor(Document doc)
         {
-            ChangeColorOneQuery(doc);
+            try
+            {
+                ChangeColorOneQuery(doc);
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("Recolor", ex.Message);
+            }
         }
 
         private static ElementId GetMaterialId(Document doc, string pipeType)
@@ -44,8 +52,9 @@ namespace Revit_Utilities.VM
         {
             foreach (Element element in elements)
             {
-                Parameter p = element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals("МатериалФитинга"));
-                p?.Set(materialId);
+                Parameter p = element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals("МатериалФитинга")) 
+                              ?? throw new ArgumentNullException(nameof(p), "Проблема в нахождении параметра \"МатериалФитинга\", проверьте наименования параметров");
+                p.Set(materialId);
             }
         }
 
@@ -79,21 +88,17 @@ namespace Revit_Utilities.VM
         private static int ChangeColor(Document doc, Dictionary<string, List<Element>> pipes, string pipeType)
         {
             int count = 0;
-            using (Transaction tran = new Transaction(doc))
+
+            foreach (KeyValuePair<string, List<Element>> valuePair in pipes)
             {
-                tran.Start("Change color");
-
-                foreach (KeyValuePair<string, List<Element>> valuePair in pipes)
+                if (valuePair.Key.Contains(pipeType))
                 {
-                    if (valuePair.Key.Contains(pipeType))
-                    {
-                        ElementId material = GetMaterialId(doc, pipeType);
-                        SetColor(valuePair.Value, material);
-                        count += valuePair.Value.Count;
-                    }
+                    ElementId material = GetMaterialId(doc, pipeType) ?? throw new ArgumentNullException(
+                                             nameof(material),
+                                             "Проблема в нахождении материалов, проверьте наименования материалов");
+                    SetColor(valuePair.Value, material);
+                    count += valuePair.Value.Count;
                 }
-
-                tran.Commit();
             }
 
             return count;
@@ -103,17 +108,25 @@ namespace Revit_Utilities.VM
         {
             var sw = Stopwatch.StartNew();
 
-            Dictionary<string, List<Element>> pipes = GetElements(doc);
+            Dictionary<string, List<Element>> pipes = GetElements(doc) ?? throw new ArgumentNullException(
+                                                          nameof(pipes),
+                                                          "Проблема в нахождении коннекторов, проверьте наименования семейств");
+            int count;
+            using (Transaction tran = new Transaction(doc))
+            {
+                tran.Start("Change color");
 
-            int count =
-            ChangeColor(doc, pipes, "Азот") +
-            ChangeColor(doc, pipes, "Вода") +
-            ChangeColor(doc, pipes, "Газ") +
-            ChangeColor(doc, pipes, "Дренаж") +
-            ChangeColor(doc, pipes, "Канализация") +
-            ChangeColor(doc, pipes, "Нефтепродукты") +
-            ChangeColor(doc, pipes, "Пенообразователь") +
-            ChangeColor(doc, pipes, "ХимическиеРеагенты");
+                count = ChangeColor(doc, pipes, "Азот") + 
+                        ChangeColor(doc, pipes, "Вода") + 
+                        ChangeColor(doc, pipes, "Газ") + 
+                        ChangeColor(doc, pipes, "Дренаж") + 
+                        ChangeColor(doc, pipes, "Канализация") + 
+                        ChangeColor(doc, pipes, "Нефтепродукты") + 
+                        ChangeColor(doc, pipes, "Пенообразователь") + 
+                        ChangeColor(doc, pipes, "ХимическиеРеагенты");
+
+                tran.Commit();
+            }
 
             sw.Stop();
 
