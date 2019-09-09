@@ -1,40 +1,61 @@
 namespace Revit_Utilities.VM
 {
     using System.Collections.Generic;
+    using System.Data;
+    using System.Diagnostics;
     using System.Linq;
 
     using Autodesk.Revit.DB;
+    using Autodesk.Revit.UI;
 
-    public class Recolorer
+    public static class Recolorer
     {
         public static void ChangeColor(Document doc)
         {
+            var sw = Stopwatch.StartNew();
+
+            List<FamilyInstance> welds = GetWeld(doc);
+            
             using (Transaction tran = new Transaction(doc))
             {
                 tran.Start("Change");
-
-                // Change(doc, welds, "0_153_255", "Азот");
-                // Change(doc, welds, "0_96_0", "Вода");
-                // Change(doc, welds, "255_220_112", "Газ");
-                // Change(doc, welds, "192_192_192", "Дренаж");
-                //
-                // Change(doc, welds, "192_192_192", "Канализация");
-                // Change(doc, welds, "160_80_0", "Нефтепродукты");
-                // Change(doc, welds, "224_0_0", "Пенообразователь");
-                // Change(doc, welds, "128_96_0", "ХимическиеРеагенты");
-
+            
+                ChangeColor(doc, welds, "Азот");
+                ChangeColor(doc, welds, "Вода");
+                ChangeColor(doc, welds, "Газ");
+                ChangeColor(doc, welds, "Дренаж");
+                ChangeColor(doc, welds, "Канализация");
+                ChangeColor(doc, welds, "Нефтепродукты");
+                ChangeColor(doc, welds, "Пенообразователь");
+                ChangeColor(doc, welds, "ХимическиеРеагенты");
+            
                 tran.Commit();
             }
+
+            sw.Stop();
+
+            TaskDialog.Show("Parameter Export", $"Proceed " + $"in {sw.Elapsed.TotalSeconds:F2} seconds.");
         }
 
-        private static IEnumerable<FamilyInstance> GetWeld(Document doc)
+        private static void ChangeColor(Document doc, IEnumerable<FamilyInstance> welds, string pipeType)
+        {
+            ElementId material = GetMaterialId(doc, pipeType);
+
+            IEnumerable<FamilyInstance> pipeTypes = GetPipeType(welds, pipeType);
+            IEnumerable<Element> connectorsToRecolor = GetElementsToRecolor(pipeTypes);
+
+            SetColor(connectorsToRecolor, material);
+        }
+
+        private static List<FamilyInstance> GetWeld(Document doc)
         {
             return new FilteredElementCollector(doc).WhereElementIsNotElementType()
                 .WhereElementIsViewIndependent()
                 .OfCategory(BuiltInCategory.OST_PipeFitting)
                 .OfClass(typeof(FamilyInstance))
                 .Cast<FamilyInstance>()
-                .Where(i => i.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные") && i.Symbol.FamilyName.Equals("801_СварнойШов_ОБЩИЙ"));
+                .Where(i => i.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные") && i.Symbol.FamilyName.Equals("801_СварнойШов_ОБЩИЙ"))
+                .ToList();
         }
 
         private static IEnumerable<FamilyInstance> GetPipeType(IEnumerable<FamilyInstance> welds, string pipeType)
@@ -56,90 +77,37 @@ namespace Revit_Utilities.VM
                    select reference.Owner;
         }
 
-        private static void Change(Document doc, string pipeType)
+        private static ElementId GetMaterialId(Document doc, string pipeType)
         {
-            var welds = GetWeld(doc).ToList();
-            IEnumerable<FamilyInstance> pipeTypes = null;
-            ElementId material = null;
             switch (pipeType)
             {
                 case "Азот":
-                    material = new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("0_153_255"))?.Id;
-                    pipeTypes = GetPipeType(welds, pipeType);
-                    break;
+                    return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("0_153_255"))?.Id;
                 case "Вода":
-                    material = new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("0_96_0"))?.Id;
-                    break;
+                    return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("0_96_0"))?.Id;
                 case "Газ":
-                    material = new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("255_220_112"))?.Id;
-                    break;
+                    return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("255_220_112"))?.Id;
                 case "Дренаж":
-                    material = new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("192_192_192"))?.Id;
-                    break;
+                    return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("192_192_192"))?.Id;
                 case "Канализация":
-                    material = new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("192_192_192"))?.Id;
-                    break;
+                    return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("192_192_192"))?.Id;
                 case "Нефтепродукты":
-                    material = new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("160_80_0"))?.Id;
-                    break;
+                    return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("160_80_0"))?.Id;
                 case "Пенообразователь":
-                    material = new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("224_0_0"))?.Id;
-                    break;
+                    return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("224_0_0"))?.Id;
                 case "ХимическиеРеагенты":
-                    material = new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("128_96_0"))?.Id;
-                    break;
+                    return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("128_96_0"))?.Id;
             }
 
-            IEnumerable<Element> connectorsToRecolor = GetElementsToRecolor(pipeTypes);
-
-            foreach (Element element in connectorsToRecolor)
-            {
-                Parameter p = element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals("МатериалФитинга"));
-                p?.Set(material);
-            }
+            return null;
         }
 
-        private static void ChangeColorOneQuery(Document doc)
+        private static void SetColor(IEnumerable<Element> elements, ElementId materialId)
         {
-            var chemicalPipe = new FilteredElementCollector(doc).WhereElementIsNotElementType()
-                .WhereElementIsViewIndependent()
-                .OfCategory(BuiltInCategory.OST_PipeFitting)
-                .OfClass(typeof(FamilyInstance))
-                .Cast<FamilyInstance>()
-                .Where(i => i.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные") && i.Symbol.FamilyName.Equals("801_СварнойШов_ОБЩИЙ"))
-                .SelectMany(e => e.MEPModel.ConnectorManager.Connectors.Cast<Connector>(), (e, connector) => (e, connector))
-                .SelectMany(t => t.connector.AllRefs.Cast<Connector>(), (familyInstance, reference) => (familyInstance, reference))
-                .Where(
-                    t => t.reference.Owner.Name.Contains("Азот") || t.reference.Owner.Name.Contains("Вода") || t.reference.Owner.Name.Contains("Газ")
-                         || t.reference.Owner.Name.Contains("Дренаж") || t.reference.Owner.Name.Contains("Канализация") || t.reference.Owner.Name.Contains("Нефтепродукты")
-                         || t.reference.Owner.Name.Contains("Пенообразователь") || t.reference.Owner.Name.Contains("ХимическиеРеагенты"))
-                .Select((t, f) => (t.familyInstance.e, t.reference.Owner))
-                .SelectMany(e => e.e.MEPModel.ConnectorManager.Connectors.Cast<Connector>(), (e, connector) => (familyInstance: e.e, connector, Owner: e.Owner))
-                .SelectMany(t => t.connector.AllRefs.Cast<Connector>(), (t, reference) => (t, reference))
-                .Where(
-                    t => (t.reference.Owner.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeFitting)
-                         && !t.reference.Owner.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные"))
-                .GroupBy(e => e.t.Owner.Name, e => e.reference.Owner)
-                .ToDictionary(e => e.Key, e => e.ToList());
-
-            using (Transaction tran = new Transaction(doc))
+            foreach (Element element in elements)
             {
-                tran.Start("Change");
-
-                foreach (KeyValuePair<string, List<Element>> valuePair in chemicalPipe)
-                {
-                    if (valuePair.Key.Contains("Азот"))
-                    {
-                        ElementId material = new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("0_153_255"))?.Id;
-                        foreach (Element element in valuePair.Value)
-                        {
-                            Parameter p = element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals("МатериалФитинга"));
-                            p?.Set(material);
-                        }
-                    }
-                }
-
-                tran.Commit();
+                Parameter p = element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals("МатериалФитинга"));
+                p?.Set(materialId);
             }
         }
     }

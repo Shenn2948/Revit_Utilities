@@ -1,0 +1,143 @@
+namespace Revit_Utilities.VM
+{
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Diagnostics;
+    using System.Linq;
+
+    using Autodesk.Revit.DB;
+    using Autodesk.Revit.UI;
+
+    public static class RecolorerOneQuery
+    {
+        public static void ChangeColor(Document doc)
+        {
+            var sw = Stopwatch.StartNew();
+
+            ChangeColorOneQuery(doc);
+
+            sw.Stop();
+
+            TaskDialog.Show("Parameter Export", $"Proceed " + $"in {sw.Elapsed.TotalSeconds:F2} seconds.");
+        }
+
+        private static ElementId GetMaterialId(Document doc, string pipeType)
+        {
+            switch (pipeType)
+            {
+                case "Азот":
+                    return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("0_153_255"))?.Id;
+                case "Вода":
+                    return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("0_96_0"))?.Id;
+                case "Газ":
+                    return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("255_220_112"))?.Id;
+                case "Дренаж":
+                    return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("192_192_192"))?.Id;
+                case "Канализация":
+                    return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("192_192_192"))?.Id;
+                case "Нефтепродукты":
+                    return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("160_80_0"))?.Id;
+                case "Пенообразователь":
+                    return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("224_0_0"))?.Id;
+                case "ХимическиеРеагенты":
+                    return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("128_96_0"))?.Id;
+            }
+
+            return null;
+        }
+
+        private static void SetColor(IEnumerable<Element> elements, ElementId materialId)
+        {
+            foreach (Element element in elements)
+            {
+                Parameter p = element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals("МатериалФитинга"));
+                p?.Set(materialId);
+            }
+        }
+
+        private static void ChangeColorOneQuery(Document doc)
+        {
+            var chemicalPipe = new FilteredElementCollector(doc).WhereElementIsNotElementType()
+                .WhereElementIsViewIndependent()
+                .OfCategory(BuiltInCategory.OST_PipeFitting)
+                .OfClass(typeof(FamilyInstance))
+                .Cast<FamilyInstance>()
+                .Where(i => i.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные") && i.Symbol.FamilyName.Equals("801_СварнойШов_ОБЩИЙ"))
+                .SelectMany(e => e.MEPModel.ConnectorManager.Connectors.Cast<Connector>(), (e, connector) => (familyInstance: e, connector))
+                .SelectMany(t => t.connector.AllRefs.Cast<Connector>(), (familyInstance, reference) => (familyInstance, reference))
+                .Where(
+                    t => t.reference.Owner.Name.Contains("Азот") || t.reference.Owner.Name.Contains("Вода") || t.reference.Owner.Name.Contains("Газ")
+                         || t.reference.Owner.Name.Contains("Дренаж") || t.reference.Owner.Name.Contains("Канализация")
+                         || t.reference.Owner.Name.Contains("Нефтепродукты") || t.reference.Owner.Name.Contains("Пенообразователь")
+                         || t.reference.Owner.Name.Contains("ХимическиеРеагенты"))
+                .Select(t => (t.familyInstance.familyInstance, t.reference.Owner))
+                .SelectMany(
+                    e => e.familyInstance.MEPModel.ConnectorManager.Connectors.Cast<Connector>(),
+                    (e, connector) => (familyInstance: e.familyInstance, connector, Owner: e.Owner))
+                .SelectMany(t => t.connector.AllRefs.Cast<Connector>(), (t, reference) => (InstanceConnectorOwnerTuple: t, reference))
+                .Where(
+                    t => (t.reference.Owner.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeFitting)
+                         && !t.reference.Owner.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные"))
+                .GroupBy(e => e.InstanceConnectorOwnerTuple.Owner.Name, e => e.reference.Owner)
+                .ToDictionary(e => e.Key, e => e.ToList());
+
+            using (Transaction tran = new Transaction(doc))
+            {
+                tran.Start("Change");
+
+                foreach (KeyValuePair<string, List<Element>> valuePair in chemicalPipe)
+                {
+                    if (valuePair.Key.Contains("Азот"))
+                    {
+                        ElementId material = GetMaterialId(doc, "Азот");
+                        SetColor(valuePair.Value, material);
+                    }
+
+                    if (valuePair.Key.Contains("Вода"))
+                    {
+                        ElementId material = GetMaterialId(doc, "Вода");
+                        SetColor(valuePair.Value, material);
+                    }
+
+                    if (valuePair.Key.Contains("Газ"))
+                    {
+                        ElementId material = GetMaterialId(doc, "Газ");
+                        SetColor(valuePair.Value, material);
+                    }
+
+                    if (valuePair.Key.Contains("Дренаж"))
+                    {
+                        ElementId material = GetMaterialId(doc, "Дренаж");
+                        SetColor(valuePair.Value, material);
+                    }
+
+                    if (valuePair.Key.Contains("Канализация"))
+                    {
+                        ElementId material = GetMaterialId(doc, "Канализация");
+                        SetColor(valuePair.Value, material);
+                    }
+
+                    if (valuePair.Key.Contains("Нефтепродукты"))
+                    {
+                        ElementId material = GetMaterialId(doc, "Нефтепродукты");
+                        SetColor(valuePair.Value, material);
+                    }
+
+                    if (valuePair.Key.Contains("Пенообразователь"))
+                    {
+                        ElementId material = GetMaterialId(doc, "Пенообразователь");
+                        SetColor(valuePair.Value, material);
+                    }
+
+                    if (valuePair.Key.Contains("ХимическиеРеагенты"))
+                    {
+                        ElementId material = GetMaterialId(doc, "ХимическиеРеагенты");
+                        SetColor(valuePair.Value, material);
+                    }
+                }
+
+                tran.Commit();
+            }
+        }
+    }
+}

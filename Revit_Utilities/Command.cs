@@ -20,6 +20,8 @@ namespace Revit_Utilities
 
             Recolorer.ChangeColor(doc);
 
+            RecolorerOneQuery.ChangeColor(doc);
+
             return Result.Succeeded;
         }
     }
