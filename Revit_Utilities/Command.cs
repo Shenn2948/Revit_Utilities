@@ -18,8 +18,7 @@ namespace Revit_Utilities
             Application app = uiapp.Application;
             Document doc = uidoc.Document;
 
-            Recolorer.ChangeColor(doc);
-
+            // Recolorer.ChangeColor(doc);
             RecolorerOneQuery.ChangeColor(doc);
 
             return Result.Succeeded;

@@ -12,13 +12,7 @@ namespace Revit_Utilities.VM
     {
         public static void ChangeColor(Document doc)
         {
-            var sw = Stopwatch.StartNew();
-
             ChangeColorOneQuery(doc);
-
-            sw.Stop();
-
-            TaskDialog.Show("Parameter Export", $"Proceed " + $"in {sw.Elapsed.TotalSeconds:F2} seconds.");
         }
 
         private static ElementId GetMaterialId(Document doc, string pipeType)
@@ -55,9 +49,9 @@ namespace Revit_Utilities.VM
             }
         }
 
-        private static void ChangeColorOneQuery(Document doc)
+        private static Dictionary<string, List<Element>> GetElements(Document doc)
         {
-            var chemicalPipe = new FilteredElementCollector(doc).WhereElementIsNotElementType()
+            return new FilteredElementCollector(doc).WhereElementIsNotElementType()
                 .WhereElementIsViewIndependent()
                 .OfCategory(BuiltInCategory.OST_PipeFitting)
                 .OfClass(typeof(FamilyInstance))
@@ -80,64 +74,50 @@ namespace Revit_Utilities.VM
                          && !t.reference.Owner.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные"))
                 .GroupBy(e => e.InstanceConnectorOwnerTuple.Owner.Name, e => e.reference.Owner)
                 .ToDictionary(e => e.Key, e => e.ToList());
+        }
 
+        private static int ChangeColor(Document doc, Dictionary<string, List<Element>> pipes, string pipeType)
+        {
+            int count = 0;
             using (Transaction tran = new Transaction(doc))
             {
-                tran.Start("Change");
+                tran.Start("Change color");
 
-                foreach (KeyValuePair<string, List<Element>> valuePair in chemicalPipe)
+                foreach (KeyValuePair<string, List<Element>> valuePair in pipes)
                 {
-                    if (valuePair.Key.Contains("Азот"))
+                    if (valuePair.Key.Contains(pipeType))
                     {
-                        ElementId material = GetMaterialId(doc, "Азот");
+                        ElementId material = GetMaterialId(doc, pipeType);
                         SetColor(valuePair.Value, material);
-                    }
-
-                    if (valuePair.Key.Contains("Вода"))
-                    {
-                        ElementId material = GetMaterialId(doc, "Вода");
-                        SetColor(valuePair.Value, material);
-                    }
-
-                    if (valuePair.Key.Contains("Газ"))
-                    {
-                        ElementId material = GetMaterialId(doc, "Газ");
-                        SetColor(valuePair.Value, material);
-                    }
-
-                    if (valuePair.Key.Contains("Дренаж"))
-                    {
-                        ElementId material = GetMaterialId(doc, "Дренаж");
-                        SetColor(valuePair.Value, material);
-                    }
-
-                    if (valuePair.Key.Contains("Канализация"))
-                    {
-                        ElementId material = GetMaterialId(doc, "Канализация");
-                        SetColor(valuePair.Value, material);
-                    }
-
-                    if (valuePair.Key.Contains("Нефтепродукты"))
-                    {
-                        ElementId material = GetMaterialId(doc, "Нефтепродукты");
-                        SetColor(valuePair.Value, material);
-                    }
-
-                    if (valuePair.Key.Contains("Пенообразователь"))
-                    {
-                        ElementId material = GetMaterialId(doc, "Пенообразователь");
-                        SetColor(valuePair.Value, material);
-                    }
-
-                    if (valuePair.Key.Contains("ХимическиеРеагенты"))
-                    {
-                        ElementId material = GetMaterialId(doc, "ХимическиеРеагенты");
-                        SetColor(valuePair.Value, material);
+                        count += valuePair.Value.Count;
                     }
                 }
 
                 tran.Commit();
             }
+
+            return count;
+        }
+
+        private static void ChangeColorOneQuery(Document doc)
+        {
+            var sw = Stopwatch.StartNew();
+
+            Dictionary<string, List<Element>> pipes = GetElements(doc);
+
+            int count =
+            ChangeColor(doc, pipes, "Азот") +
+            ChangeColor(doc, pipes, "Вода") +
+            ChangeColor(doc, pipes, "Газ") +
+            ChangeColor(doc, pipes, "Дренаж") +
+            ChangeColor(doc, pipes, "Канализация") +
+            ChangeColor(doc, pipes, "Нефтепродукты") +
+            ChangeColor(doc, pipes, "Пенообразователь") +
+            ChangeColor(doc, pipes, "ХимическиеРеагенты");
+
+            sw.Stop();
+
+            TaskDialog.Show("Recolor", $"{count} elements proceed " + $"in {sw.Elapsed.TotalSeconds:F2} seconds.");
         }
     }
 }
