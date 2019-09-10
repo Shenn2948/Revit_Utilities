@@ -9,16 +9,36 @@
 
     public class FillParameters
     {
-        public static void GetElements(Document doc, UIDocument uidoc)
+        public static void FillParams(Document doc, UIDocument uidoc)
+        {
+            try
+            {
+                FillParametersAction(doc);
+            }
+            catch (Exception e)
+            {
+                TaskDialog.Show("Fill parameters", e.Message);
+            }
+        }
+
+        private static void FillParametersAction(Document doc)
         {
             // концевое условие - фланец
             List<ElementId> flanges = GetFlange(doc);
 
             // концевое условие - сварка
             List<ElementId> welds = GetWelds(doc, flanges);
+            using (Transaction tran = new Transaction(doc))
+            {
+                tran.Start("Fill parameters");
 
-            SetParameters(doc, flanges, "Концевое условие", "Фланец", "Концевое условие 2", "Сварной шов");
-            SetParameters(doc, welds, "Концевое условие", "Сварной шов", "Концевое условие 2", "Сварной шов");
+                SetParameters(doc, flanges, "Концевое условие", "Фланец", "Концевое условие 2", "Сварной шов");
+                SetParameters(doc, welds, "Концевое условие", "Сварной шов", "Концевое условие 2", "Сварной шов");
+
+                tran.Commit();
+            }
+
+            TaskDialog.Show("Fill parameters", "Параметры заполнены");
         }
 
         private static void SetParameters(
@@ -35,19 +55,19 @@
             {
                 Parameter p = element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals(parameterName)) ?? throw new ArgumentNullException(
                                   nameof(p),
-                                  "Проблема в нахождении параметра \"МатериалФитинга\", проверьте наименования параметров");
+                                  $"Проблема в нахождении параметра \"{parameterName}\", проверьте наименования параметров");
                 p.Set(parameterValue);
                 if (parameterName2 != null)
                 {
                     p = element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals(parameterName2)) ?? throw new ArgumentNullException(
                             nameof(p),
-                            "Проблема в нахождении параметра \"МатериалФитинга\", проверьте наименования параметров");
+                            $"Проблема в нахождении параметра \"{parameterName2}\", проверьте наименования параметров");
                     p.Set(parameterValue2);
                 }
             }
         }
 
-        private static List<ElementId> GetWelds(Document doc, List<ElementId> flange)
+        private static List<ElementId> GetWelds(Document doc, List<ElementId> exceptFlange)
         {
             return new FilteredElementCollector(doc).WhereElementIsNotElementType()
                 .WhereElementIsViewIndependent()
@@ -65,7 +85,7 @@
                         return true;
                     })
                 .Select(e => e.Id)
-                .Except(flange)
+                .Except(exceptFlange)
                 .ToList();
         }
 
@@ -110,7 +130,6 @@
                 .Where(
                     e => (e.SuperComponent == null) && (e.MEPModel.ConnectorManager != null) && !e.Symbol.FamilyName.Equals("802_ОпорыКорпусныеПриварные_КП_ОСТ36-146-88(ОбМод)"))
                 .SelectMany(e => e.GetSubComponentIds(), (instance, id) => (instance, subComponent: doc.GetElement(id) as FamilyInstance))
-                .Where(f => f.subComponent.Symbol.FamilyName.Contains("_Фланец_"))
                 .SelectMany(e => e.instance.MEPModel.ConnectorManager.Connectors.Cast<Connector>(), (instance, connector) => (instance, connector))
                 .SelectMany(e => e.connector.AllRefs.Cast<Connector>(), (tupleInstanceConnector, connector) => (tupleInstanceConnector, connector))
                 .Where(

@@ -19,7 +19,7 @@ namespace Revit_Utilities
             Application app = uiapp.Application;
             Document doc = uidoc.Document;
 
-            FillParameters.GetElements(doc, uidoc);
+            FillParameters.FillParams(doc, uidoc);
 
             return Result.Succeeded;
         }
