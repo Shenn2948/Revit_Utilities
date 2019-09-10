@@ -70,7 +70,8 @@ namespace Revit_Utilities.VM
 
         private static List<FamilyInstance> GetWeld(Document doc)
         {
-            return new FilteredElementCollector(doc).WhereElementIsNotElementType()
+            return new FilteredElementCollector(doc)
+                .WhereElementIsNotElementType()
                 .WhereElementIsViewIndependent()
                 .OfCategory(BuiltInCategory.OST_PipeFitting)
                 .OfClass(typeof(FamilyInstance))
