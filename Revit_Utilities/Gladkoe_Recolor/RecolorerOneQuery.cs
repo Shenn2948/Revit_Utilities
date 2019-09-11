@@ -1,10 +1,10 @@
-namespace Revit_Utilities.VM
+namespace Revit_Utilities.Gladkoe_Recolor
 {
     using System;
     using System.Collections.Generic;
-    using System.Data;
     using System.Diagnostics;
     using System.Linq;
+    using System.Runtime.CompilerServices;
 
     using Autodesk.Revit.DB;
     using Autodesk.Revit.UI;
@@ -27,21 +27,21 @@ namespace Revit_Utilities.VM
         {
             switch (pipeType)
             {
-                case "Азот":
+                case "Азот_":
                     return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("0_153_255"))?.Id;
-                case "Вода":
+                case "Вода_":
                     return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("0_96_0"))?.Id;
-                case "Газ":
+                case "Газ_":
                     return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("255_220_112"))?.Id;
-                case "Дренаж":
+                case "Дренаж_":
                     return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("192_192_192"))?.Id;
-                case "Канализация":
+                case "Канализация_":
                     return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("192_192_192"))?.Id;
-                case "Нефтепродукты":
+                case "Нефтепродукты_":
                     return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("160_80_0"))?.Id;
-                case "Пенообразователь":
+                case "Пенообразователь_":
                     return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("224_0_0"))?.Id;
-                case "ХимическиеРеагенты":
+                case "ХимическиеРеагенты_":
                     return new FilteredElementCollector(doc).OfClass(typeof(Material)).FirstOrDefault(m => m.Name.Equals("128_96_0"))?.Id;
             }
 
@@ -52,9 +52,21 @@ namespace Revit_Utilities.VM
         {
             foreach (Element element in elements)
             {
-                Parameter p = element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals("МатериалФитинга")) 
-                              ?? throw new ArgumentNullException(nameof(p), "Проблема в нахождении параметра \"МатериалФитинга\", проверьте наименования параметров");
-                p.Set(materialId);
+                Parameter p = element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals("МатериалФитинга"));
+                p?.Set(materialId);
+
+                if (element is FamilyInstance fsWeld)
+                {
+                    var welds = fsWeld.MEPModel.ConnectorManager.Connectors.Cast<Connector>().SelectMany(c => c.AllRefs.Cast<Connector>().Select(e => e.Owner).Cast<FamilyInstance>());
+                    foreach (FamilyInstance weld in welds)
+                    {
+                        if (weld.Symbol.FamilyName.Equals("801_СварнойШов_ОБЩИЙ"))
+                        {
+                            p = element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals("МатериалСварки"));
+                            p?.Set(materialId);
+                        }
+                    }
+                }
             }
         }
 
@@ -65,23 +77,25 @@ namespace Revit_Utilities.VM
                 .OfCategory(BuiltInCategory.OST_PipeFitting)
                 .OfClass(typeof(FamilyInstance))
                 .Cast<FamilyInstance>()
-                .Where(i => i.Symbol.FamilyName.Equals("801_СварнойШов_ОБЩИЙ"))
+                .Where(i => i.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные") && i.Symbol.FamilyName.Equals("801_СварнойШов_ОБЩИЙ"))
                 .SelectMany(e => e.MEPModel.ConnectorManager.Connectors.Cast<Connector>(), (e, connector) => (familyInstance: e, connector))
-                .SelectMany(t => t.connector.AllRefs.Cast<Connector>(), (familyInstance, reference) => (familyInstance, reference))
+                .SelectMany(t => t.connector.AllRefs.Cast<Connector>(), (familyInstance, reference) => (tuple: familyInstance, reference))
                 .Where(
-                    t => t.reference.Owner.Name.Contains("Азот") || t.reference.Owner.Name.Contains("Вода") || t.reference.Owner.Name.Contains("Газ")
-                         || t.reference.Owner.Name.Contains("Дренаж") || t.reference.Owner.Name.Contains("Канализация")
-                         || t.reference.Owner.Name.Contains("Нефтепродукты") || t.reference.Owner.Name.Contains("Пенообразователь")
-                         || t.reference.Owner.Name.Contains("ХимическиеРеагенты"))
-                .Select(t => (t.familyInstance.familyInstance, t.reference.Owner))
-                .SelectMany(
-                    e => e.familyInstance.MEPModel.ConnectorManager.Connectors.Cast<Connector>(),
-                    (e, connector) => (familyInstance: e.familyInstance, connector, Owner: e.Owner))
-                .SelectMany(t => t.connector.AllRefs.Cast<Connector>(), (t, reference) => (InstanceConnectorOwnerTuple: t, reference))
+                    t => t.reference.Owner.Name.StartsWith("Азот_")
+                         || t.reference.Owner.Name.StartsWith("Вода_")
+                         || t.reference.Owner.Name.StartsWith("Газ_")
+                         || t.reference.Owner.Name.StartsWith("Дренаж_")
+                         || t.reference.Owner.Name.StartsWith("Канализация_")
+                         || t.reference.Owner.Name.StartsWith("Нефтепродукты_")
+                         || t.reference.Owner.Name.StartsWith("Пенообразователь_")
+                         || t.reference.Owner.Name.StartsWith("ХимическиеРеагенты_"))
+                .Select(t => (t.tuple.familyInstance, t.reference.Owner))
+                .SelectMany(e => e.familyInstance.MEPModel.ConnectorManager.Connectors.Cast<Connector>(), (e, connector) => (e.familyInstance, connector, e.Owner))
+                .SelectMany(t => t.connector.AllRefs.Cast<Connector>(), (t, reference) => (tuple: t, reference))
                 .Where(
                     t => (t.reference.Owner.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeFitting)
                          && !t.reference.Owner.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные"))
-                .GroupBy(e => e.InstanceConnectorOwnerTuple.Owner.Name, e => e.reference.Owner)
+                .GroupBy(e => e.tuple.Owner.Name, e => e.reference.Owner)
                 .ToDictionary(e => e.Key, e => e.ToList());
         }
 
@@ -91,11 +105,10 @@ namespace Revit_Utilities.VM
 
             foreach (KeyValuePair<string, List<Element>> valuePair in pipes)
             {
-                if (valuePair.Key.Contains(pipeType))
+                if (valuePair.Key.StartsWith(pipeType))
                 {
-                    ElementId material = GetMaterialId(doc, pipeType) ?? throw new ArgumentNullException(
-                                             nameof(material),
-                                             "Проблема в нахождении материалов, проверьте наименования материалов");
+                    ElementId material = GetMaterialId(doc, pipeType)
+                                         ?? throw new ArgumentNullException(nameof(material), "Проблема в нахождении материалов, проверьте наименования материалов");
                     SetColor(valuePair.Value, material);
                     count += valuePair.Value.Count;
                 }
@@ -108,22 +121,21 @@ namespace Revit_Utilities.VM
         {
             var sw = Stopwatch.StartNew();
 
-            Dictionary<string, List<Element>> pipes = GetElements(doc) ?? throw new ArgumentNullException(
-                                                          nameof(pipes),
-                                                          "Проблема в нахождении коннекторов, проверьте наименования семейств");
+            Dictionary<string, List<Element>> pipes =
+                GetElements(doc) ?? throw new ArgumentNullException(nameof(pipes), "Проблема в нахождении коннекторов, проверьте наименования семейств");
             int count;
             using (Transaction tran = new Transaction(doc))
             {
                 tran.Start("Change color");
 
-                count = ChangeColor(doc, pipes, "Азот") + 
-                        ChangeColor(doc, pipes, "Вода") + 
-                        ChangeColor(doc, pipes, "Газ") + 
-                        ChangeColor(doc, pipes, "Дренаж") + 
-                        ChangeColor(doc, pipes, "Канализация") + 
-                        ChangeColor(doc, pipes, "Нефтепродукты") + 
-                        ChangeColor(doc, pipes, "Пенообразователь") + 
-                        ChangeColor(doc, pipes, "ХимическиеРеагенты");
+                count = ChangeColor(doc, pipes, "Азот_")
+                        + ChangeColor(doc, pipes, "Вода_")
+                        + ChangeColor(doc, pipes, "Газ_")
+                        + ChangeColor(doc, pipes, "Дренаж_")
+                        + ChangeColor(doc, pipes, "Канализация_")
+                        + ChangeColor(doc, pipes, "Нефтепродукты_")
+                        + ChangeColor(doc, pipes, "Пенообразователь_")
+                        + ChangeColor(doc, pipes, "ХимическиеРеагенты_");
 
                 tran.Commit();
             }

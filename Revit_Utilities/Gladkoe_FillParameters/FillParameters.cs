@@ -14,8 +14,6 @@
             try
             {
                 FillParametersAction(doc);
-
-                // uidoc.Selection.SetElementIds(GetWelds(doc, GetFlange(doc)));
             }
             catch (Exception e)
             {
@@ -34,8 +32,9 @@
             {
                 tran.Start("Fill parameters");
 
-                SetParameters(doc, flanges, "Фланец", "Сварной шов", "Сварной шов", "Сварной шов");
-                SetParameters(doc, welds, "Сварной шов", "Сварной шов", "Сварной шов", "Сварной шов");
+                SetFlangesParameters(doc, flanges, "Фланец", "Сварной шов", "Сварной шов", "Сварной шов");
+
+                SetWeldParameters(doc, welds);
 
                 tran.Commit();
             }
@@ -50,7 +49,35 @@
                        $"Проблема в нахождении параметра \"{parameterName}\", проверьте наименования параметров");
         }
 
-        private static void SetParameters(Document doc, List<ElementId> elementsId, params string[] values)
+        private static void SetWeldParameters(Document doc, List<ElementId> elementIds)
+        {
+            IEnumerable<Element> elements = elementIds.Select(doc.GetElement);
+
+            foreach (Element element in elements)
+            {
+                Parameter p = GetParameter(element, "Концевое условие");
+                p.Set("Сварной шов");
+
+                p = GetParameter(element, "Концевое условие 2");
+                p.Set("Сварной шов");
+
+                if (element is FamilyInstance fs && (fs.Symbol.FamilyName.Contains("Тройник") || fs.Symbol.FamilyName.Contains("Фильтр")))
+                {
+                    p = GetParameter(element, "Концевое условие 3");
+                    p.Set("Сварной шов");
+
+                    if (fs.Symbol.FamilyName.Contains("Крестовина"))
+                    {
+                        p = GetParameter(element, "Концевое условие 3");
+                        p.Set("Сварной шов");
+                        p = GetParameter(element, "Концевое условие 4");
+                        p.Set("Сварной шов");
+                    }
+                }
+            }
+        }
+
+        private static void SetFlangesParameters(Document doc, List<ElementId> elementsId, params string[] values)
         {
             IEnumerable<Element> elements = elementsId.Select(doc.GetElement);
 
