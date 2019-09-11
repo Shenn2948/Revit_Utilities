@@ -57,12 +57,12 @@ namespace Revit_Utilities.Gladkoe_Recolor
 
                 if (element is FamilyInstance fsWeld)
                 {
-                    var welds = fsWeld.MEPModel.ConnectorManager.Connectors.Cast<Connector>().SelectMany(c => c.AllRefs.Cast<Connector>().Select(e => e.Owner).Cast<FamilyInstance>());
-                    foreach (FamilyInstance weld in welds)
+                    var welds = fsWeld.MEPModel.ConnectorManager.Connectors.Cast<Connector>().SelectMany(c => c.AllRefs.Cast<Connector>().Select(e => e.Owner));
+                    foreach (Element weld in welds)
                     {
-                        if (weld.Symbol.FamilyName.Equals("801_—варнойЎов_ќЅў»…"))
+                        if (weld is FamilyInstance weldFs && weldFs.Symbol.FamilyName.Equals("801_—варнойЎов_ќЅў»…"))
                         {
-                            p = element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals("ћатериал—варки"));
+                            p = weld.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals("ћатериал—варки"));
                             p?.Set(materialId);
                         }
                     }
