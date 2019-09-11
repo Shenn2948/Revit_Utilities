@@ -4,7 +4,6 @@ namespace Revit_Utilities.Gladkoe_Recolor
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Linq;
-    using System.Runtime.CompilerServices;
 
     using Autodesk.Revit.DB;
     using Autodesk.Revit.UI;
@@ -70,7 +69,7 @@ namespace Revit_Utilities.Gladkoe_Recolor
             }
         }
 
-        private static Dictionary<string, List<Element>> GetElements(Document doc)
+        private static Dictionary<string, List<FamilyInstance>> GetElements(Document doc)
         {
             return new FilteredElementCollector(doc).WhereElementIsNotElementType()
                 .WhereElementIsViewIndependent()
@@ -96,14 +95,14 @@ namespace Revit_Utilities.Gladkoe_Recolor
                     t => (t.reference.Owner.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeFitting)
                          && !t.reference.Owner.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные"))
                 .GroupBy(e => e.tuple.Owner.Name, e => e.reference.Owner)
-                .ToDictionary(e => e.Key, e => e.ToList());
+                .ToDictionary(e => e.Key, e => e.Cast<FamilyInstance>().ToList());
         }
 
-        private static int ChangeColor(Document doc, Dictionary<string, List<Element>> pipes, string pipeType)
+        private static int ChangeColor(Document doc, Dictionary<string, List<FamilyInstance>> elements, string pipeType)
         {
             int count = 0;
 
-            foreach (KeyValuePair<string, List<Element>> valuePair in pipes)
+            foreach (KeyValuePair<string, List<FamilyInstance>> valuePair in elements)
             {
                 if (valuePair.Key.StartsWith(pipeType))
                 {
@@ -121,21 +120,21 @@ namespace Revit_Utilities.Gladkoe_Recolor
         {
             var sw = Stopwatch.StartNew();
 
-            Dictionary<string, List<Element>> pipes =
-                GetElements(doc) ?? throw new ArgumentNullException(nameof(pipes), "Проблема в нахождении коннекторов, проверьте наименования семейств");
+            Dictionary<string, List<FamilyInstance>> elements =
+                GetElements(doc) ?? throw new ArgumentNullException(nameof(elements), "Проблема в нахождении коннекторов, проверьте наименования семейств");
             int count;
             using (Transaction tran = new Transaction(doc))
             {
                 tran.Start("Change color");
 
-                count = ChangeColor(doc, pipes, "Азот_")
-                        + ChangeColor(doc, pipes, "Вода_")
-                        + ChangeColor(doc, pipes, "Газ_")
-                        + ChangeColor(doc, pipes, "Дренаж_")
-                        + ChangeColor(doc, pipes, "Канализация_")
-                        + ChangeColor(doc, pipes, "Нефтепродукты_")
-                        + ChangeColor(doc, pipes, "Пенообразователь_")
-                        + ChangeColor(doc, pipes, "ХимическиеРеагенты_");
+                count = ChangeColor(doc, elements, "Азот_")
+                        + ChangeColor(doc, elements, "Вода_")
+                        + ChangeColor(doc, elements, "Газ_")
+                        + ChangeColor(doc, elements, "Дренаж_")
+                        + ChangeColor(doc, elements, "Канализация_")
+                        + ChangeColor(doc, elements, "Нефтепродукты_")
+                        + ChangeColor(doc, elements, "Пенообразователь_")
+                        + ChangeColor(doc, elements, "ХимическиеРеагенты_");
 
                 tran.Commit();
             }
