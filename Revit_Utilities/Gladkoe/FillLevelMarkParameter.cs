@@ -35,23 +35,23 @@ namespace Revit_Utilities.Gladkoe
 
         private static void FillParametersAction()
         {
-            Reference pickedObj = uiRevitDocument.Selection.PickObject(ObjectType.Element, "Select element");
-            StringBuilder sb = new StringBuilder();
-            using (Transaction tx = new Transaction(revitDocument))
+            Reference pickedObj = uiRevitDocument.Selection.PickObject(ObjectType.Element, new ElementsOfClassSelectionFilter<Pipe>(), "Select pipe");
+            var sb = new StringBuilder();
+            using (var tx = new Transaction(revitDocument))
             {
                 tx.Start("GetInfo");
 
-                Element e = revitDocument.GetElement(pickedObj.ElementId);
-
-                sb.Append(GetStartToEndElementOffset(e) + GetStartToEndElementOffsetFromSurveyPoint(e));
-
-                TaskDialog.Show("Info", sb.ToString());
+                if (revitDocument.GetElement(pickedObj.ElementId) is Pipe e)
+                {
+                    sb.Append(GetStartToEndElementOffset(e) + GetStartToEndElementOffsetFromSurveyPoint(e));
+                    TaskDialog.Show("Info", sb.ToString());
+                }
 
                 tx.Commit();
             }
         }
 
-        private static string GetStartToEndElementOffsetFromSurveyPoint(Element element)
+        private static string GetStartToEndElementOffsetFromSurveyPoint(Pipe element)
         {
             StringBuilder sb = new StringBuilder();
             BasePoint projectPoint = new FilteredElementCollector(revitDocument).OfClass(typeof(BasePoint)).Cast<BasePoint>().First(x => !x.IsShared);
@@ -73,7 +73,7 @@ namespace Revit_Utilities.Gladkoe
             return sb.ToString();
         }
 
-        private static string GetStartToEndElementOffset(Element element)
+        private static string GetStartToEndElementOffset(Pipe element)
         {
             StringBuilder sb = new StringBuilder();
             LocationCurve lc = element.Location as LocationCurve;
