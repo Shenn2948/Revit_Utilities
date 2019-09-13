@@ -4,7 +4,7 @@ namespace Revit_Utilities
     using Autodesk.Revit.DB;
     using Autodesk.Revit.UI;
 
-    using Revit_Utilities.Gladkoe_FillParameters;
+    using Revit_Utilities.Gladkoe;
     using Revit_Utilities.Gladkoe_Recolor;
 
     using Application = Autodesk.Revit.ApplicationServices.Application;
@@ -19,7 +19,8 @@ namespace Revit_Utilities
             Application app = uiapp.Application;
             Document doc = uidoc.Document;
 
-            RecolorerOneQuery.ChangeColor(doc);
+            // RecolorerOneQuery.ChangeColor(doc);
+            FillLevelMarkParameter.FillParams(doc, uidoc);
 
             return Result.Succeeded;
         }
