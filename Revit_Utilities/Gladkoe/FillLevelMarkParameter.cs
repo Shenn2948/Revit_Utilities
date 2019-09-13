@@ -12,13 +12,18 @@ using Revit_Utilities.Utilities;
 
 namespace Revit_Utilities.Gladkoe
 {
-    public class FillLevelMarkParameter
+    public static class FillLevelMarkParameter
     {
+        private static Document revitDocument;
+        private static UIDocument uiRevitDocument;
+
         public static void FillParams(Document doc, UIDocument uidoc)
         {
+            revitDocument = doc;
+            uiRevitDocument = uidoc;
             try
             {
-                FillParametersAction(doc, uidoc);
+                FillParametersAction();
 
                 // Elevation2(doc);
             }
@@ -28,24 +33,17 @@ namespace Revit_Utilities.Gladkoe
             }
         }
 
-        private static void FillParametersAction(Document doc, UIDocument uidoc)
+        private static void FillParametersAction()
         {
-            Reference pickedObj = uidoc.Selection.PickObject(ObjectType.Element, "Select element");
+            Reference pickedObj = uiRevitDocument.Selection.PickObject(ObjectType.Element, "Select element");
             StringBuilder sb = new StringBuilder();
-            using (Transaction tx = new Transaction(doc))
+            using (Transaction tx = new Transaction(revitDocument))
             {
                 tx.Start("GetInfo");
 
-                Element e = doc.GetElement(pickedObj.ElementId);
+                Element e = revitDocument.GetElement(pickedObj.ElementId);
 
-                LocationCurve lc = e.Location as LocationCurve;
-                Curve c = lc.Curve;
-
-                sb.Append(
-                    "\n"
-                    + $"Pipe {e.Id.IntegerValue} from {Math.Round(c.GetEndPoint(0).Z.FeetAsMillimeters(), 1, MidpointRounding.ToEven)} to"
-                    + $" {Math.Round(c.GetEndPoint(1).Z.FeetAsMillimeters(), 1, MidpointRounding.ToEven)}");
-                sb.Append(GetStartToEndOffsetFromSurveyPoint(doc, e));
+                sb.Append(GetStartToEndElementOffset(e) + GetStartToEndElementOffsetFromSurveyPoint(e));
 
                 TaskDialog.Show("Info", sb.ToString());
 
@@ -53,54 +51,49 @@ namespace Revit_Utilities.Gladkoe
             }
         }
 
-        private static string GetStartToEndOffsetFromSurveyPoint(Document doc, Element e)
+        private static string GetStartToEndElementOffsetFromSurveyPoint(Element element)
         {
             StringBuilder sb = new StringBuilder();
-            BasePoint projectPoint = new FilteredElementCollector(doc).OfClass(typeof(BasePoint)).Cast<BasePoint>().First(x => !x.IsShared);
+            BasePoint projectPoint = new FilteredElementCollector(revitDocument).OfClass(typeof(BasePoint)).Cast<BasePoint>().First(x => !x.IsShared);
 
             var px = projectPoint.get_Parameter(BuiltInParameter.BASEPOINT_EASTWEST_PARAM).AsDouble();
             var py = projectPoint.get_Parameter(BuiltInParameter.BASEPOINT_NORTHSOUTH_PARAM).AsDouble();
             var pz = projectPoint.get_Parameter(BuiltInParameter.BASEPOINT_ELEVATION_PARAM).AsDouble();
             XYZ project = new XYZ(px, py, pz);
 
-            LocationCurve lc = e.Location as LocationCurve;
+            LocationCurve lc = element.Location as LocationCurve;
             Curve c = lc.Curve;
 
             var elementStartPoint = c.GetEndPoint(0).Add(project);
             var elementEndPoint = c.GetEndPoint(1).Add(project);
 
             sb.Append(
-                "\n"
-                + $"Pipe {e.Id.IntegerValue} from {Math.Round(elementStartPoint.Z.FeetAsMillimeters(), 1, MidpointRounding.ToEven)} to "
-                + $"{Math.Round(elementEndPoint.Z.FeetAsMillimeters(), 1, MidpointRounding.ToEven)}");
+                $" ({Math.Round(elementStartPoint.Z.FeetAsMillimeters(), 1, MidpointRounding.ToEven)} - "
+                + $"{Math.Round(elementEndPoint.Z.FeetAsMillimeters(), 1, MidpointRounding.ToEven)})");
             return sb.ToString();
         }
 
-        private static void GetStartToEndOffset(Document doc)
+        private static string GetStartToEndElementOffset(Element element)
         {
-            var a = new FilteredElementCollector(doc).OfClass(typeof(Pipe)).Cast<Pipe>();
-
-            int numDucts = 0;
-            int numCurves = 0;
             StringBuilder sb = new StringBuilder();
-            foreach (Pipe d in a)
+            LocationCurve lc = element.Location as LocationCurve;
+            Curve c = lc.Curve;
+
+            sb.Append(
+                $"{Math.Round(c.GetEndPoint(0).Z.FeetAsMillimeters(), 1, MidpointRounding.ToEven)} - "
+                + $"{Math.Round(c.GetEndPoint(1).Z.FeetAsMillimeters(), 1, MidpointRounding.ToEven)}");
+
+            return sb.ToString();
+        }
+
+        private static void GetStartToEndOffset()
+        {
+            var pipes = new FilteredElementCollector(revitDocument).OfClass(typeof(Pipe)).Cast<Pipe>();
+
+            foreach (Pipe p in pipes)
             {
-                ++numDucts;
-
-                LocationCurve lc = d.Location as LocationCurve;
-
-                ++numCurves;
-
-                Curve c = lc.Curve;
-                sb.Append(
-                    "\n"
-                    + $"Pipe {d.Id.IntegerValue} from {Math.Round(c.GetEndPoint(0).Z.FeetAsMillimeters(), 1, MidpointRounding.ToEven)} to"
-                    + $" {Math.Round(c.GetEndPoint(1).Z.FeetAsMillimeters(), 1, MidpointRounding.ToEven)}");
+                string parameterData = GetStartToEndElementOffset(p) + GetStartToEndElementOffsetFromSurveyPoint(p);
             }
-
-            sb.AppendLine();
-            sb.Append($"{numDucts} Pipes analysed, and {numCurves} curve listed.");
-            TaskDialog.Show("I", sb.ToString());
         }
     }
 }
