@@ -58,6 +58,7 @@
     <Compile Include="Gladkoe\FillLevelMarkParameter.cs" />
     <Compile Include="Gladkoe\FillParameters.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Utilities\ParameterUnitConverter.cs" />
     <Compile Include="Utilities\LabUtils.cs" />
     <Compile Include="Utilities\ResultsHelper.cs" />
     <Compile Include="Gladkoe\Gladkoe_Recolor\RecolorerOneQuery.cs" />
