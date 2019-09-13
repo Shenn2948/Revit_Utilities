@@ -43,7 +43,7 @@ namespace Revit_Utilities.Gladkoe
 
                 if (revitDocument.GetElement(pickedObj.ElementId) is Pipe e)
                 {
-                    sb.Append(GetStartToEndElementOffset(e) + GetStartToEndElementOffsetFromSurveyPoint(e));
+                    sb.Append(GetStartToEndPipeOffset(e) + GetStartToEndPipeOffsetFromSurveyPoint(e));
                     TaskDialog.Show("Info", sb.ToString());
                 }
 
@@ -51,7 +51,7 @@ namespace Revit_Utilities.Gladkoe
             }
         }
 
-        private static string GetStartToEndElementOffsetFromSurveyPoint(Pipe element)
+        private static string GetStartToEndPipeOffsetFromSurveyPoint(Pipe element)
         {
             StringBuilder sb = new StringBuilder();
             BasePoint projectPoint = new FilteredElementCollector(revitDocument).OfClass(typeof(BasePoint)).Cast<BasePoint>().First(x => !x.IsShared);
@@ -73,7 +73,7 @@ namespace Revit_Utilities.Gladkoe
             return sb.ToString();
         }
 
-        private static string GetStartToEndElementOffset(Pipe element)
+        private static string GetStartToEndPipeOffset(Pipe element)
         {
             StringBuilder sb = new StringBuilder();
             LocationCurve lc = element.Location as LocationCurve;
@@ -86,13 +86,13 @@ namespace Revit_Utilities.Gladkoe
             return sb.ToString();
         }
 
-        private static void GetStartToEndOffset()
+        private static void GetStartToEndPipeOffsets()
         {
             var pipes = new FilteredElementCollector(revitDocument).OfClass(typeof(Pipe)).Cast<Pipe>();
 
             foreach (Pipe p in pipes)
             {
-                string parameterData = GetStartToEndElementOffset(p) + GetStartToEndElementOffsetFromSurveyPoint(p);
+                string parameterData = GetStartToEndPipeOffset(p) + GetStartToEndPipeOffsetFromSurveyPoint(p);
             }
         }
     }
