@@ -60,7 +60,7 @@
     <Compile Include="Gladkoe\EndConditionFillParameter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utilities\ElementsOfClassSelectionFilter.cs" />
-    <Compile Include="Utilities\ParameterUnitConverter.cs" />
+    <Compile Include="Utilities\ParameterHelper.cs" />
     <Compile Include="Utilities\LabUtils.cs" />
     <Compile Include="Utilities\ResultsHelper.cs" />
     <Compile Include="Gladkoe\Gladkoe_Recolor\RecolorerOneQuery.cs" />

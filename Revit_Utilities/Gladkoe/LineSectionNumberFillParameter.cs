@@ -1,19 +1,33 @@
-﻿namespace Revit_Utilities.Gladkoe
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+
+namespace Revit_Utilities.Gladkoe
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
+    using Autodesk.Revit.DB.Plumbing;
+    using Autodesk.Revit.UI.Selection;
 
-    using Autodesk.Revit.DB;
-    using Autodesk.Revit.UI;
+    using Revit_Utilities.Utilities;
 
-    public class LineSectionNumberFillParameter
+    public static class LineSectionNumberFillParameter
     {
+        private static Document revitDocument;
+
+        private static UIDocument uiRevitDocument;
+
         public static void FillParams(Document doc, UIDocument uidoc)
         {
+            revitDocument = doc;
+            uiRevitDocument = uidoc;
+
             try
             {
-                FillParametersAction(doc);
+                // FillParametersAction();
+                FillParametersTestAction();
             }
             catch (Exception e)
             {
@@ -21,15 +35,85 @@
             }
         }
 
-        private static void FillParametersAction(Document doc)
+        private static void FillParametersTestAction()
         {
-            List<Element> welds = GetElements(doc);
+            Reference pickedObj = uiRevitDocument.Selection.PickObject(ObjectType.Element, new ElementsOfClassSelectionFilter<Pipe>(), "Select pipe");
+            var sb = new StringBuilder();
+            var stringBuilderForIds = new StringBuilder();
 
-            using (Transaction tran = new Transaction(doc))
+            using (var tran = new Transaction(revitDocument))
             {
                 tran.Start("Fill parameters");
 
-                SetParameters(doc, welds);
+                Element element = revitDocument.GetElement(pickedObj.ElementId);
+                Parameter resultParameter = GetParameter(element, "Номер участка линии");
+
+                string s1 = GetParameter(element, "№ поз. по ГП").GetParameterValue();
+                string s2 = GetParameter(element, "Шифр продукта").GetParameterValue();
+                string s3 = GetParameter(element, "Номер по технологической схеме").GetParameterValue();
+                string s4 = GetParameter(element, "Условный диаметр").GetParameterValue().Split(' ').FirstOrDefault();
+                string s5 = GetParameter(element, "Условное давление").GetParameterValue().Split(' ').FirstOrDefault();
+                string s6 = GetParameter(element, "Конструкция трубопровода").GetParameterValue();
+
+                if ((s1 != string.Empty) && (s2 != string.Empty) && (s3 != string.Empty) && (s4 != string.Empty) && (s5 != string.Empty) && (s6 != string.Empty))
+                {
+                    // string s1 = p1.GetParameterValue();
+                    // string s2 = p2.GetParameterValue();
+                    // string s3 = p3.GetParameterValue();
+                    // string s4 = p4.GetParameterValue().Split(' ').FirstOrDefault();
+                    // string s5 = p5.GetParameterValue().Split(' ').FirstOrDefault();
+                    // string s6 = p6.GetParameterValue();
+                    sb.Append($"{s1}-{s2}-{s3}-{s4}-{s5}-{s6}");
+                    resultParameter.Set(sb.ToString());
+                }
+
+                // if (p1.HasValue && p2.HasValue && (!p3.HasValue || (p3.GetParameterValue() == string.Empty)) && p4.HasValue && p5.HasValue && p6.HasValue)
+                // {
+                // // string s1 = p1.GetParameterValue();
+                // // string s2 = p2.GetParameterValue();
+                // // string s4 = p4.GetParameterValue().Split(' ').FirstOrDefault();
+                // // string s5 = p5.GetParameterValue().Split(' ').FirstOrDefault();
+                // // string s6 = p6.GetParameterValue();
+                // sb.Append($"{s1}-{s2}-{s4}-{s5}-{s6}");
+                // resultParameter.Set(sb.ToString());
+                // }
+                // else if (!p1.HasValue || !p2.HasValue || !p4.HasValue || !p5.HasValue || !p6.HasValue)
+                // {
+                // stringBuilderForIds.Append(
+                // $"element ID: {element.Id.IntegerValue}, не заполнены: "
+                // + $"{(p1.HasValue ? string.Empty : p1.Definition.Name + ",")}"
+                // + $"{(p2.HasValue ? string.Empty : p2.Definition.Name + ",")}"
+                // + $"{(p4.HasValue ? string.Empty : p4.Definition.Name + ",")}"
+                // + $"{(p5.HasValue ? string.Empty : p5.Definition.Name + ",")}"
+                // + $"{(p6.HasValue ? string.Empty : p6.Definition.Name)}\n");
+                // }
+                tran.Commit();
+            }
+
+            TaskDialog.Show("Fill parameters", stringBuilderForIds.Length != 0 ? $"{stringBuilderForIds}" : "Параметры заполнены");
+        }
+
+        private static List<string> GetValues(Element element)
+        {
+            string s1 = GetParameter(element, "№ поз. по ГП").GetParameterValue();
+            string s2 = GetParameter(element, "Шифр продукта").GetParameterValue();
+            string s3 = GetParameter(element, "Номер по технологической схеме").GetParameterValue();
+            string s4 = GetParameter(element, "Условный диаметр").GetParameterValue().Split(' ').FirstOrDefault();
+            string s5 = GetParameter(element, "Условное давление").GetParameterValue().Split(' ').FirstOrDefault();
+            string s6 = GetParameter(element, "Конструкция трубопровода").GetParameterValue();
+
+            return null;
+        }
+
+        private static void FillParametersAction()
+        {
+            List<Element> elements = GetElements();
+
+            using (Transaction tran = new Transaction(revitDocument))
+            {
+                tran.Start("Fill parameters");
+
+                SetParameters(elements);
 
                 tran.Commit();
             }
@@ -39,42 +123,58 @@
 
         private static Parameter GetParameter(Element element, string parameterName)
         {
-            return element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals(parameterName)) ?? throw new ArgumentNullException(
-                       parameterName,
-                       $"Проблема в нахождении параметра \"{parameterName}\", проверьте наименования параметров");
+            return element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals(parameterName))
+                   ?? throw new ArgumentNullException(parameterName, $"Проблема в нахождении параметра \"{parameterName}\", проверьте наименования и наличие параметров");
         }
 
-        private static void SetParameters(Document doc, List<Element> elements)
+        private static void SetParameters(List<Element> elements)
         {
+            StringBuilder sb = new StringBuilder();
+            StringBuilder stringBuilderForIds = new StringBuilder();
+
             foreach (Element element in elements)
             {
-                Parameter p = GetParameter(element, "Концевое условие");
-                p.Set("Сварной шов");
+                Parameter p1 = GetParameter(element, "№ поз. по ГП");
+                Parameter p2 = GetParameter(element, "Шифр продукта");
+                Parameter p3 = GetParameter(element, "Номер по технологической схеме");
+                Parameter p4 = GetParameter(element, "Условный диаметр");
+                Parameter p5 = GetParameter(element, "Условное давление");
+                Parameter p6 = GetParameter(element, "Конструкция трубопровода");
+                Parameter resultParameter = GetParameter(element, "Номер участка линии");
 
-                p = GetParameter(element, "Концевое условие 2");
-                p.Set("Сварной шов");
-
-                if (element is FamilyInstance fs && (fs.Symbol.FamilyName.Contains("Тройник") || fs.Symbol.FamilyName.Contains("Фильтр")))
+                if (p1.HasValue && p2.HasValue && p3.HasValue && p4.HasValue && p5.HasValue && p6.HasValue)
                 {
-                    p = GetParameter(element, "Концевое условие 3");
-                    p.Set("Сварной шов");
-
-                    if (fs.Symbol.FamilyName.Contains("Крестовина"))
-                    {
-                        p = GetParameter(element, "Концевое условие 3");
-                        p.Set("Сварной шов");
-                        p = GetParameter(element, "Концевое условие 4");
-                        p.Set("Сварной шов");
-                    }
+                    sb.Append($"{p1.AsString()}-{p2.AsString()}-{p3.AsString()}-{p4.AsString().Split(' ').Take(1)}-{p5.AsString().Split(' ').Take(1)}-{p6.AsString()}");
+                    resultParameter.Set(sb.ToString());
+                    sb.Clear();
+                    break;
                 }
+
+                if (p1.HasValue && p2.HasValue && !p3.HasValue && p4.HasValue && p5.HasValue && p6.HasValue)
+                {
+                    sb.Append($"{p1.AsString()}-{p2.AsString()}-{p4.AsString().Split(' ').Take(1)}-{p5.AsString().Split(' ').Take(1)}-{p6.AsString()}");
+                    resultParameter.Set(sb.ToString());
+                    sb.Clear();
+                    break;
+                }
+
+                stringBuilderForIds.Append(
+                    $"element ID: {element.Id.IntegerValue}, не заполнены: "
+                    + $"{(p1.HasValue ? string.Empty : p1.Definition.Name)}, "
+                    + $"{(p2.HasValue ? string.Empty : p2.Definition.Name)}, "
+                    + $"{(p4.HasValue ? string.Empty : p4.Definition.Name)}, "
+                    + $"{(p5.HasValue ? string.Empty : p5.Definition.Name)}, "
+                    + $"{(p6.HasValue ? string.Empty : p6.Definition.Name)}\n");
             }
         }
 
-        private static List<Element> GetElements(Document doc)
+        private static List<Element> GetElements()
         {
-            return new FilteredElementCollector(doc).WhereElementIsNotElementType()
+            return new FilteredElementCollector(revitDocument).WhereElementIsNotElementType()
                 .WhereElementIsViewIndependent()
-                .WherePasses(new ElementMulticategoryFilter(new List<BuiltInCategory> { BuiltInCategory.OST_PipeFitting, BuiltInCategory.OST_PipeCurves, BuiltInCategory.OST_PipeAccessory }))
+                .WherePasses(
+                    new ElementMulticategoryFilter(
+                        new List<BuiltInCategory> { BuiltInCategory.OST_PipeFitting, BuiltInCategory.OST_PipeCurves, BuiltInCategory.OST_PipeAccessory }))
                 .ToElements()
                 .Where(e => e is FamilyInstance)
                 .Select(e => e)
