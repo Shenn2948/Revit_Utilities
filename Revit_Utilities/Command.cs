@@ -5,6 +5,7 @@ namespace Revit_Utilities
     using Autodesk.Revit.UI;
 
     using Revit_Utilities.Gladkoe;
+    using Revit_Utilities.Gladkoe.LineSectionNumberFillParameter;
     using Revit_Utilities.Gladkoe_Recolor;
 
     using Application = Autodesk.Revit.ApplicationServices.Application;
