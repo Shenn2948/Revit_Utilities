@@ -12,7 +12,7 @@ using Revit_Utilities.Utilities;
 
 namespace Revit_Utilities.Gladkoe
 {
-    public static class FillLevelMarkParameter
+    public static class LevelMarkFillParameter
     {
         private static Document revitDocument;
         private static UIDocument uiRevitDocument;

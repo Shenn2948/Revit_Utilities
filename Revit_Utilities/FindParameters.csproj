@@ -55,8 +55,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Command.cs" />
-    <Compile Include="Gladkoe\FillLevelMarkParameter.cs" />
-    <Compile Include="Gladkoe\FillParameters.cs" />
+    <Compile Include="Gladkoe\LineSectionNumberFillParameter.cs" />
+    <Compile Include="Gladkoe\LevelMarkFillParameter.cs" />
+    <Compile Include="Gladkoe\EndConditionFillParameter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utilities\ElementsOfClassSelectionFilter.cs" />
     <Compile Include="Utilities\ParameterUnitConverter.cs" />

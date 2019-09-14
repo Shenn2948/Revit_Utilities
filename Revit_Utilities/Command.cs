@@ -20,7 +20,7 @@ namespace Revit_Utilities
             Document doc = uidoc.Document;
 
             // RecolorerOneQuery.ChangeColor(doc);
-            FillLevelMarkParameter.FillParams(doc, uidoc);
+            LevelMarkFillParameter.FillParams(doc, uidoc);
 
             return Result.Succeeded;
         }

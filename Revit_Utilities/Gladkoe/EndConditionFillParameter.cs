@@ -7,7 +7,7 @@
     using Autodesk.Revit.DB;
     using Autodesk.Revit.UI;
 
-    public class FillParameters
+    public class EndConditionFillParameter
     {
         public static void FillParams(Document doc, UIDocument uidoc)
         {
