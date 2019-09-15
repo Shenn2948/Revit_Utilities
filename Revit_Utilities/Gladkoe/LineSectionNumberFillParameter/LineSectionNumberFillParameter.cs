@@ -83,7 +83,7 @@ namespace Revit_Utilities.Gladkoe.LineSectionNumberFillParameter
                 else if ((s1 == string.Empty) || (s2 == string.Empty) || (s4 == string.Empty) || (s5 == string.Empty) || (s6 == string.Empty))
                 {
                     sb.Append(
-                        $"element ID: {element.Id.IntegerValue}, не заполнены: "
+                        $"element ID: {element.Id.IntegerValue.ToString()}, не заполнены: "
                         + $"{(s1 != string.Empty ? string.Empty : GetParameter(element, "№ поз. по ГП").Definition.Name + ",")}"
                         + $"{(s2 != string.Empty ? string.Empty : GetParameter(element, "Шифр продукта").Definition.Name + ",")}"
                         + $"{(s4 != string.Empty ? string.Empty : GetParameter(element, "Условный диаметр").Definition.Name + ",")}"
@@ -150,7 +150,7 @@ namespace Revit_Utilities.Gladkoe.LineSectionNumberFillParameter
                 else if ((s1 == string.Empty) || (s2 == string.Empty) || (s4 == string.Empty) || (s5 == string.Empty) || (s6 == string.Empty))
                 {
                     stringBuilderForIds.Append(
-                        $"element ID: {element.Id.IntegerValue}, не заполнены: "
+                        $"element ID: {element.Id.IntegerValue.ToString()}, не заполнены: "
                         + $"{(s1 != string.Empty ? string.Empty : GetParameter(element, "№ поз. по ГП").Definition.Name + ",")}"
                         + $"{(s2 != string.Empty ? string.Empty : GetParameter(element, "Шифр продукта").Definition.Name + ",")}"
                         + $"{(s4 != string.Empty ? string.Empty : GetParameter(element, "Условный диаметр").Definition.Name + ",")}"
