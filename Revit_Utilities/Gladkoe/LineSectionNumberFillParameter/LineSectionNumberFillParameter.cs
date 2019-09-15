@@ -57,6 +57,7 @@ namespace Revit_Utilities.Gladkoe.LineSectionNumberFillParameter
         {
             StringBuilder sb = new StringBuilder();
             int i = 0;
+
             foreach (Element element in elements)
             {
                 Parameter resultParameter = GetParameter(element, "Номер участка линии");
