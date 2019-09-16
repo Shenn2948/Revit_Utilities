@@ -46,7 +46,7 @@
         {
             return element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals(parameterName)) ?? throw new ArgumentNullException(
                        parameterName,
-                       $"Проблема в нахождении параметра \"{parameterName}\", проверьте наименования параметров");
+                       $@"Проблема в нахождении параметра ""{parameterName}"", проверьте наименования параметров");
         }
 
         private static void SetWeldParameters(Document doc, List<ElementId> elementIds)

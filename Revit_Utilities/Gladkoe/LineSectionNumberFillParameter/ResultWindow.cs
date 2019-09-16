@@ -12,10 +12,10 @@ namespace Revit_Utilities.Gladkoe.LineSectionNumberFillParameter
 {
     public partial class ResultWindow : Form
     {
-        public ResultWindow(StringBuilder sb)
+        public ResultWindow(StringBuilder sb, int i)
         {
             this.InitializeComponent();
-
+            this.ParameterFilledLabel.Text = $@"Заполнено параметров: {i}";
             this.textBoxResults.Text = sb.ToString();
         }
 
