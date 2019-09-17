@@ -1,28 +1,29 @@
-﻿namespace Revit_Utilities.Gladkoe.ParameterDataManipulations
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Diagnostics;
+using System.Linq;
+
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+
+using Newtonsoft.Json;
+
+using Revit_Utilities.Utilities;
+
+namespace Revit_Utilities.Gladkoe.ParameterDataManipulations
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Data;
-    using System.Diagnostics;
-    using System.Linq;
-
-    using Autodesk.Revit.DB;
-    using Autodesk.Revit.DB.Plumbing;
-    using Autodesk.Revit.UI;
-
-    using Revit_Utilities.Utilities;
-
     public class SaveParameters
     {
         public static Document RevitDocument { get; private set; }
 
-        public static void FillParams(Document doc, UIDocument uidoc)
+        public static void Save(Document doc)
         {
             RevitDocument = doc;
 
             try
             {
-                FillParametersAction();
+                SerializeDataToJson();
             }
             catch (Exception e)
             {
@@ -30,55 +31,37 @@
             }
         }
 
-        private static void FillParametersAction()
+        private static void SerializeDataToJson()
         {
-            var elements = GetElements(RevitDocument);
-
-            using (Transaction tran = new Transaction(RevitDocument))
-            {
-                tran.Start("Заполнить номер участка линии");
-
-                // SetParameters(elements);
-                tran.Commit();
-            }
-        }
-
-        private static void ExportElementParameters(List<Parameter> pickedDefinitions, Dictionary<string, List<Element>> sortedElements)
-        {
-            string savingPath = ResultsHelper.GetSaveFilePath();
-            if (savingPath == string.Empty)
-            {
-                return;
-            }
+            Dictionary<string, List<Element>> elements = GetElements(RevitDocument);
 
             var sw = Stopwatch.StartNew();
 
-            using (var workbook = new XLWorkbook())
-            {
-                DataSet ds = GetDataSet(sortedElements, pickedDefinitions);
-                workbook.Worksheets.Add(ds);
-                workbook.SaveAs(savingPath);
-            }
+            DataSet ds = GetDataSet(elements);
+            string json = JsonConvert.SerializeObject(ds, Formatting.Indented);
 
             sw.Stop();
 
-            TaskDialog.Show(
-                "Parameter Export",
-                $"{sortedElements.Count} categories and a total of {sortedElements.Values.Sum(list => list.Count)} elements exported in {sw.Elapsed.TotalSeconds:F2} seconds.");
+            if (ResultsHelper.SaveJsonFile(json))
+            {
+                TaskDialog.Show(
+                    "Parameter Export",
+                    $"{elements.Count} categories and a total of {elements.Values.Sum(list => list.Count)} elements exported in {sw.Elapsed.TotalSeconds:F2} seconds.");
+            }
         }
 
-        private static DataSet GetDataSet(Dictionary<string, List<Element>> sortedElements, List<Parameter> pickedDefinitions)
+        private static DataSet GetDataSet(Dictionary<string, List<Element>> sortedElements)
         {
             var ds = new DataSet();
             foreach (var element in sortedElements)
             {
-                ds.Tables.Add(GetTable(element, pickedDefinitions));
+                ds.Tables.Add(GetTable(element));
             }
 
             return ds;
         }
 
-        private static DataTable GetTable(KeyValuePair<string, List<Element>> element, List<Parameter> pickedDefinitions)
+        private static DataTable GetTable(KeyValuePair<string, List<Element>> element)
         {
             var table = new DataTable { TableName = element.Key };
 
@@ -87,9 +70,13 @@
             {
                 DataRow row = table.NewRow();
                 row["ID"] = item.Id.IntegerValue.ToString();
-                foreach (Parameter parameter in item.GetOrderedParameters().Where(p => p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES && p.IsShared))
+                foreach (Parameter parameter in item.GetOrderedParameters()
+                    .Where(p => (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES) && p.IsShared))
                 {
-                    table.Columns.Add(parameter.Definition.Name);
+                    if (!table.Columns.Contains(parameter.Definition.Name))
+                    {
+                        table.Columns.Add(parameter.Definition.Name);
+                    }
 
                     row[parameter.Definition.Name] = parameter.GetStringParameterValue();
                 }
@@ -98,18 +85,6 @@
             }
 
             return table;
-        }
-
-        private static Dictionary<string, List<Parameter>> FindParameterCategories(Dictionary<string, List<Element>> elements)
-        {
-            return elements.Values.SelectMany(e => e)
-                .SelectMany(e => e.GetOrderedParameters())
-                .GroupBy(p => p.Definition.Name)
-                .Select(p => p.First())
-                .OrderBy(p => p.Definition.Name)
-                .GroupBy(p => p.Definition.ParameterGroup, p => p)
-                .OrderBy(grp => LabelUtils.GetLabelFor(grp.Key))
-                .ToDictionary(e => LabelUtils.GetLabelFor(e.Key), e => e.ToList());
         }
 
         private static Dictionary<string, List<Element>> GetElements(Document doc)
@@ -129,7 +104,7 @@
                         }))
                 .Where(e => e.Category != null)
                 .Where(
-                    delegate (Element e)
+                    delegate(Element e)
                     {
                         Parameter volume = e.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED);
 

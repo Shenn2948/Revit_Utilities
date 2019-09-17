@@ -24,8 +24,9 @@ namespace Revit_Utilities
             // RecolorerOneQuery.ChangeColor(doc);
             // LevelMarkFillParameter.FillParams(doc, uidoc);
             // LineSectionNumberFillParameter.FillParams(doc);
+            // FillParameters.FillParams(doc, uidoc);
+            SaveParameters.Save(doc);
 
-            FillParameters.FillParams(doc, uidoc);
             return Result.Succeeded;
         }
     }

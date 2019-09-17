@@ -1,6 +1,7 @@
 ﻿namespace Revit_Utilities.Utilities
 {
     using System.Collections.Generic;
+    using System.IO;
     using System.Text;
     using System.Windows.Forms;
 
@@ -29,21 +30,34 @@
         }
 
         /// <summary>
-        /// The show results.
+        /// The save file.
         /// </summary>
-        /// <param name="elements">
-        /// The elements.
+        /// <param name="s">
+        /// The string
         /// </param>
-        public static void ShowResults(IEnumerable<Element> elements)
+        public static bool SaveJsonFile(string s)
         {
-            StringBuilder sb = new StringBuilder();
+            SaveFileDialog saveFileDialog = new SaveFileDialog()
+                                            {
+                                                Filter = @"JSON Files|*.json",
+                                                FilterIndex = 1,
+                                                RestoreDirectory = true,
+                                                Title = @"Сохранить файл JSON"
+                                            };
 
-            foreach (Element e in elements)
+            if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
-                sb.AppendLine($"{e.Name}-{e.Id}");
+                string fileName = saveFileDialog.FileName;
+
+                using (StreamWriter stream = new StreamWriter(fileName))
+                {
+                    stream.WriteLine(s);
+                }
+
+                return true;
             }
 
-            TaskDialog.Show("Revit", sb.ToString());
+            return false;
         }
     }
 }
