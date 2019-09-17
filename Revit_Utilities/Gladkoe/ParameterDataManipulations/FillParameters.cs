@@ -1,17 +1,14 @@
-﻿namespace Revit_Utilities.Gladkoe
+﻿namespace Revit_Utilities.Gladkoe.ParameterDataManipulations
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Text;
 
     using Autodesk.Revit.DB;
+    using Autodesk.Revit.DB.Plumbing;
     using Autodesk.Revit.UI;
 
-    using Revit_Utilities.Gladkoe.LineSectionNumberFillParameter;
-    using Revit_Utilities.Utilities;
-
-    public static class CopyParameters
+    public static class FillParameters
     {
         public static Document RevitDocument { get; private set; }
 
@@ -61,18 +58,53 @@
             foreach (Element element in elements)
             {
                 Parameter resultParameter = GetParameter(element, "UID");
-
                 resultParameter.Set(element.Id.IntegerValue.ToString());
+
+                if (element is Pipe pipe)
+                {
+                    Parameter p1 = pipe.GetOrderedParameters()
+                        .Where(p => !p.IsShared && (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_GEOMETRY))
+                        .FirstOrDefault(p => p.Definition.Name.Equals("Длина"));
+                    resultParameter = pipe.GetOrderedParameters()
+                        .Where(p => p.IsShared && (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES))
+                        .FirstOrDefault(p => p.Definition.Name.Equals("Длина"));
+                    if (p1 != null)
+                    {
+                        resultParameter?.Set(p1.AsDouble());
+                    }
+
+                    p1 = pipe.GetOrderedParameters()
+                        .Where(p => !p.IsShared && (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_GEOMETRY))
+                        .FirstOrDefault(p => p.Definition.Name.Equals("Внешний диаметр"));
+                    resultParameter = pipe.GetOrderedParameters()
+                        .Where(p => p.IsShared && (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES))
+                        .FirstOrDefault(p => p.Definition.Name.Equals("Наружный диаметр"));
+                    if (p1 != null)
+                    {
+                        resultParameter?.Set(p1.AsDouble());
+                    }
+
+                    p1 = pipe.GetOrderedParameters()
+                        .Where(p => !p.IsShared && (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_MECHANICAL))
+                        .FirstOrDefault(p => p.Definition.Name.Equals("Диаметр"));
+                    resultParameter = pipe.GetOrderedParameters()
+                        .Where(p => p.IsShared && (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES))
+                        .FirstOrDefault(p => p.Definition.Name.Equals("Условный диаметр"));
+                    if (p1 != null)
+                    {
+                        resultParameter?.Set(p1.AsDouble());
+                    }
+                }
+
                 i++;
             }
 
-            TaskDialog.Show("Info", $"Параметров заполнено {i}");
+            TaskDialog.Show("Info", $"Элементов обработано {i}");
         }
 
         private static List<Element> GetElements()
         {
-            return new FilteredElementCollector(RevitDocument)
-                .WhereElementIsNotElementType()
+            return new FilteredElementCollector(RevitDocument).WhereElementIsNotElementType()
                 .WhereElementIsViewIndependent()
                 .WherePasses(
                     new ElementMulticategoryFilter(

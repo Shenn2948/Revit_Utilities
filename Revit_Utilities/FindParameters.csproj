@@ -56,7 +56,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Command.cs" />
-    <Compile Include="Gladkoe\CopyParameters.cs" />
+    <Compile Include="Gladkoe\ParameterDataManipulations\FillParameters.cs" />
     <Compile Include="Gladkoe\LineSectionNumberFillParameter\LineSectionNumberFillParameter.cs" />
     <Compile Include="Gladkoe\LevelMarkFillParameter.cs" />
     <Compile Include="Gladkoe\EndConditionFillParameter.cs" />
@@ -66,13 +66,14 @@
     <Compile Include="Gladkoe\LineSectionNumberFillParameter\ResultWindow.Designer.cs">
       <DependentUpon>ResultWindow.cs</DependentUpon>
     </Compile>
+    <Compile Include="Gladkoe\ParameterDataManipulations\SaveParameters.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utilities\ElementsOfClassSelectionFilter.cs" />
     <Compile Include="Utilities\ParameterHelper.cs" />
     <Compile Include="Utilities\LabUtils.cs" />
-    <Compile Include="Utilities\ResultsHelper.cs" />
     <Compile Include="Gladkoe\Gladkoe_Recolor\RecolorerOneQuery.cs" />
     <Compile Include="Gladkoe\Gladkoe_Recolor\Recolorer.cs" />
+    <Compile Include="Utilities\ResultsHelper.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Revit_Utilities.addin" />
@@ -114,6 +115,7 @@
       <DependentUpon>ResultWindow.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>
