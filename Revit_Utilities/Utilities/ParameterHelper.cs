@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
 
     using Autodesk.Revit.DB;
 
@@ -61,6 +62,11 @@
             }
 
             return s;
+        }
+
+        public static Dictionary<TKey, List<TValue>> ToDictionary<TKey, TValue>(this IEnumerable<IGrouping<TKey, TValue>> groupings)
+        {
+            return groupings.ToDictionary(group => group.Key, group => group.ToList());
         }
     }
 }

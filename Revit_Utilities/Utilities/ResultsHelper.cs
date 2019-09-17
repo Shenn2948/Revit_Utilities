@@ -16,7 +16,7 @@
         /// <summary>
         /// The save file.
         /// </summary>
-        public static string GetSaveFilePath()
+        public static string GetSaveExcelFilePath()
         {
             var saveFileDialog = new SaveFileDialog()
                                  {
@@ -32,10 +32,26 @@
         /// <summary>
         /// The save file.
         /// </summary>
+        public static string GetOpenJsonFilePath()
+        {
+            var openFileDialog = new OpenFileDialog()
+                                 {
+                                     Filter = @"JSON Files|*.json",
+                                     FilterIndex = 1,
+                                     RestoreDirectory = true,
+                                     Title = @"Открыть файл JSON"
+            };
+
+            return openFileDialog.ShowDialog() == DialogResult.OK ? openFileDialog.FileName : string.Empty;
+        }
+
+        /// <summary>
+        /// The save file.
+        /// </summary>
         /// <param name="s">
         /// The string
         /// </param>
-        public static bool SaveJsonFile(string s)
+        public static bool WriteJsonFile(string s)
         {
             SaveFileDialog saveFileDialog = new SaveFileDialog()
                                             {

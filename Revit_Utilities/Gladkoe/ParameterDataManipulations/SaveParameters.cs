@@ -13,7 +13,7 @@ using Revit_Utilities.Utilities;
 
 namespace Revit_Utilities.Gladkoe.ParameterDataManipulations
 {
-    public class SaveParameters
+    public static class SaveParameters
     {
         public static Document RevitDocument { get; private set; }
 
@@ -27,22 +27,22 @@ namespace Revit_Utilities.Gladkoe.ParameterDataManipulations
             }
             catch (Exception e)
             {
-                TaskDialog.Show("Fill parameters", e.Message);
+                TaskDialog.Show("Save parameters", e.Message);
             }
         }
 
         private static void SerializeDataToJson()
         {
-            Dictionary<string, List<Element>> elements = GetElements(RevitDocument);
-
             var sw = Stopwatch.StartNew();
 
+            Dictionary<string, List<Element>> elements = GetElements(RevitDocument);
             DataSet ds = GetDataSet(elements);
+
             string json = JsonConvert.SerializeObject(ds, Formatting.Indented);
 
             sw.Stop();
 
-            if (ResultsHelper.SaveJsonFile(json))
+            if (ResultsHelper.WriteJsonFile(json))
             {
                 TaskDialog.Show(
                     "Parameter Export",
