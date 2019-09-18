@@ -84,6 +84,11 @@ namespace Gladkoe.ParameterDataManipulations
             {
                 tran.Start("Перенос параметров из JSON");
 
+                if (expr)
+                {
+                    
+                }
+
                 foreach (Element element in elements)
                 {
                     foreach (Parameter parameter in element.GetOrderedParameters())
