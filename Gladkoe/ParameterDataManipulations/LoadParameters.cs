@@ -13,13 +13,15 @@ using Gladkoe.Utilities;
 
 using Newtonsoft.Json;
 
-using Application = Autodesk.Revit.ApplicationServices.Application;
-
 // ReSharper disable StyleCop.SA1108
 //// ReSharper disable StyleCop.SA1512
 // ReSharper disable StyleCop.SA1515
 namespace Gladkoe.ParameterDataManipulations
 {
+    using System.Windows.Forms;
+
+    using Application = Autodesk.Revit.ApplicationServices.Application;
+
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     public class LoadParameters : IExternalCommand
@@ -72,7 +74,7 @@ namespace Gladkoe.ParameterDataManipulations
         private static void CopyParameters(Document doc)
         {
             var elements = GetElements(doc)
-                .Where(e => e.LookupParameter("UID") != null && e.LookupParameter("UID").AsString() != null)
+                .Where(e => e.LookupParameter("UID") != null)
                 .GroupBy(e => e.LookupParameter("UID").AsString(), e => e).ToDictionary(e => e.Key, e => e.FirstOrDefault());
             DataSet dataSet = JsonConvert.DeserializeObject<DataSet>(File.ReadAllText(ResultsHelper.GetOpenJsonFilePath()));
 
@@ -84,7 +86,7 @@ namespace Gladkoe.ParameterDataManipulations
             using (Transaction tran = new Transaction(doc))
             {
                 tran.Start("Перенос параметров из JSON");
-
+                // TODO CHECK IF ELEMENT HAS PARAMETER FIRST, THEN SET (возможно присваивается категория и имя типа и тогда создается новый сварной шов)
                 foreach (var element in elements)
                 {
                     foreach (var parameter in element.Value.GetOrderedParameters().Where(p => !p.IsReadOnly && (p.StorageType != StorageType.ElementId)))

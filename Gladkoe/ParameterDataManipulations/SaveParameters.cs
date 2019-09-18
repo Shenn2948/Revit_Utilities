@@ -72,13 +72,13 @@ namespace Gladkoe.ParameterDataManipulations
         {
             var table = new DataTable { TableName = element.Key };
 
-            table.Columns.Add("ID");
+            // table.Columns.Add("ID");
             foreach (Element item in element.Value)
             {
                 DataRow row = table.NewRow();
-                row["ID"] = item.Id.IntegerValue.ToString();
-                foreach (Parameter parameter in item.GetOrderedParameters()
-                    .Where(p => (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES) && p.IsShared))
+
+                // row["ID"] = item.Id.IntegerValue.ToString();
+                foreach (Parameter parameter in item.GetOrderedParameters().Where(p => (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES) && p.IsShared))
                 {
                     if (!table.Columns.Contains(parameter.Definition.Name))
                     {
