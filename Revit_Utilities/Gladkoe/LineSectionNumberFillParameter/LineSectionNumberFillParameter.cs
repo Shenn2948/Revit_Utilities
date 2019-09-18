@@ -3,22 +3,25 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Plumbing;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Selection;
 
 using Revit_Utilities.Utilities;
 
 namespace Revit_Utilities.Gladkoe.LineSectionNumberFillParameter
 {
-    public class LineSectionNumberFillParameter
+    [Transaction(TransactionMode.Manual)]
+    [Regeneration(RegenerationOption.Manual)]
+    public class LineSectionNumberFillParameter : IExternalCommand
     {
         public static Document RevitDocument { get; private set; }
 
-        public static void FillParams(Document doc)
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            RevitDocument = doc;
+            UIApplication uiapp = commandData.Application;
+            UIDocument uidoc = uiapp.ActiveUIDocument;
+            RevitDocument = uidoc.Document;
 
             try
             {
@@ -28,6 +31,8 @@ namespace Revit_Utilities.Gladkoe.LineSectionNumberFillParameter
             {
                 TaskDialog.Show("Fill parameters", e.Message);
             }
+
+            return Result.Succeeded;
         }
 
         private static void FillParametersAction()

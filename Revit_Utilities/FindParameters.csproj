@@ -59,7 +59,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Command.cs" />
     <Compile Include="Gladkoe\ParameterDataManipulations\FillParameters.cs" />
     <Compile Include="Gladkoe\LineSectionNumberFillParameter\LineSectionNumberFillParameter.cs" />
     <Compile Include="Gladkoe\LevelMarkFillParameter.cs" />

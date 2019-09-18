@@ -4,31 +4,33 @@
     using System.Collections.Generic;
     using System.Linq;
 
+    using Autodesk.Revit.Attributes;
     using Autodesk.Revit.DB;
     using Autodesk.Revit.DB.Plumbing;
     using Autodesk.Revit.UI;
 
-    public static class FillParameters
+    [Transaction(TransactionMode.Manual)]
+    [Regeneration(RegenerationOption.Manual)]
+    public class FillParameters : IExternalCommand
     {
         public static Document RevitDocument { get; private set; }
 
-        public static UIDocument UiRevitDocument { get; private set; }
-
-        public static void FillParams(Document doc, UIDocument uidoc)
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            RevitDocument = doc;
-            UiRevitDocument = uidoc;
+            UIApplication uiapp = commandData.Application;
+            UIDocument uidoc = uiapp.ActiveUIDocument;
+            RevitDocument = uidoc.Document;
 
             try
             {
                 FillParametersAction();
-
-                // uidoc.Selection.SetElementIds(GetElements().Select(e => e.Id).ToList());
             }
             catch (Exception e)
             {
                 TaskDialog.Show("Fill parameters", e.Message);
             }
+
+            return Result.Succeeded;
         }
 
         private static void FillParametersAction()

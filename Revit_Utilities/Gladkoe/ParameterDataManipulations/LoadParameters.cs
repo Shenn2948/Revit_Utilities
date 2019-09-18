@@ -13,18 +13,15 @@ using Newtonsoft.Json;
 
 using Revit_Utilities.Utilities;
 
+using Application = Autodesk.Revit.ApplicationServices.Application;
+using DataTable = System.Data.DataTable;
+using Parameter = Autodesk.Revit.DB.Parameter;
+
+// ReSharper disable StyleCop.SA1108
 //// ReSharper disable StyleCop.SA1512
 // ReSharper disable StyleCop.SA1515
 namespace Revit_Utilities.Gladkoe.ParameterDataManipulations
 {
-    using System.Text;
-
-    using Microsoft.Office.Interop.Excel;
-
-    using Application = Autodesk.Revit.ApplicationServices.Application;
-    using DataTable = System.Data.DataTable;
-    using Parameter = Autodesk.Revit.DB.Parameter;
-
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     public class LoadParameters : IExternalCommand
@@ -38,7 +35,8 @@ namespace Revit_Utilities.Gladkoe.ParameterDataManipulations
 
             try
             {
-                SerializeDataToJson(doc);
+                // SerializeDataToJson(doc);
+                CopyParameters(doc);
             }
             catch (Exception e)
             {
@@ -61,7 +59,7 @@ namespace Revit_Utilities.Gladkoe.ParameterDataManipulations
 
             foreach (var item in groupedByIdData)
             {
-                Element e = doc.GetElement(new ElementId(Convert.ToInt32(item.Key)));
+                // Element e = doc.GetElement(new ElementId(Convert.ToInt32(item.Key)));
             }
 
             sw.Stop();
@@ -76,7 +74,7 @@ namespace Revit_Utilities.Gladkoe.ParameterDataManipulations
 
         private static void CopyParameters(Document doc)
         {
-            var elements = GetElements(doc);
+            var elements = GetElements(doc).Where(e => GetParameter(e, "UID") != null);
             DataSet dataSet = JsonConvert.DeserializeObject<DataSet>(File.ReadAllText(ResultsHelper.GetOpenJsonFilePath()));
 
             var groupedByIdData = dataSet.Tables.Cast<DataTable>()
@@ -84,24 +82,35 @@ namespace Revit_Utilities.Gladkoe.ParameterDataManipulations
                 .GroupBy(p => p.Field<string>("UID"))
                 .ToDictionary(r => r.Key, r => r.SelectMany(p => p.Table.Columns.Cast<DataColumn>().Select(c => new { Name = c.ColumnName, Value = p[c] })));
 
-            foreach (var item in groupedByIdData)
+            using (Transaction tran = new Transaction(doc))
             {
+                tran.Start("Перенос параметров из JSON");
+
                 foreach (Element element in elements)
                 {
-                    if (GetParameter(element, "UID").GetStringParameterValue().Equals(item.Key))
+                    foreach (Parameter parameter in element.GetOrderedParameters())
                     {
-                        foreach (var parameter in item.Value)
-                        {
-                            if ((parameter.Value != null) && ((string)parameter.Value != string.Empty))
-                            {
-                                Parameter resultParameter = GetParameter(element, parameter.Name);
+                    }
 
-                                //resultParameter.Set(parameter.Value);
-                                resultParameter?.SetValueString(parameter.Value.ToString());
+                    foreach (var item in groupedByIdData)
+                    {
+                        Parameter uid = GetParameter(element, "UID");
+                        if (uid.GetStringParameterValue().Equals("1933405"))
+                        {
+                            // item.Key
+                            foreach (var parameter in item.Value)
+                            {
+                                if ((parameter.Value != null) && (parameter.Value.ToString() != string.Empty) && parameter.Name.Equals("Автор"))
+                                {
+                                    Parameter resultParameter = GetParameter(element, parameter.Name);
+                                    resultParameter?.SetValueString(parameter.Value.ToString());
+                                }
                             }
                         }
                     }
                 }
+
+                tran.Commit();
             }
         }
 
@@ -139,7 +148,7 @@ namespace Revit_Utilities.Gladkoe.ParameterDataManipulations
 
         private static Parameter GetParameter(Element element, string parameterName)
         {
-            return element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals(parameterName)) ?? throw new ArgumentException();
+            return element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals(parameterName));
         }
     }
 }

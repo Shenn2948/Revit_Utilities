@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Plumbing;
 using Autodesk.Revit.UI;
@@ -12,15 +13,22 @@ using Revit_Utilities.Utilities;
 
 namespace Revit_Utilities.Gladkoe
 {
-    public static class LevelMarkFillParameter
-    {
-        private static Document revitDocument;
-        private static UIDocument uiRevitDocument;
+    using Autodesk.Revit.Attributes;
 
-        public static void FillParams(Document doc, UIDocument uidoc)
+    [Transaction(TransactionMode.Manual)]
+    [Regeneration(RegenerationOption.Manual)]
+    public class LevelMarkFillParameter : IExternalCommand
+    {
+        public static Document RevitDocument { get; private set; }
+
+        public static UIDocument UiRevitDocument { get; private set; }
+
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            revitDocument = doc;
-            uiRevitDocument = uidoc;
+            UIApplication uiapp = commandData.Application;
+            UiRevitDocument = uiapp.ActiveUIDocument;
+            RevitDocument = UiRevitDocument.Document;
+
             try
             {
                 FillParametersAction();
@@ -29,17 +37,19 @@ namespace Revit_Utilities.Gladkoe
             {
                 TaskDialog.Show("Fill parameters", e.Message);
             }
+
+            return Result.Succeeded;
         }
 
         private static void FillParametersAction()
         {
-            Reference pickedObj = uiRevitDocument.Selection.PickObject(ObjectType.Element, new ElementsOfClassSelectionFilter<Pipe>(), "Select pipe");
+            Reference pickedObj = UiRevitDocument.Selection.PickObject(ObjectType.Element, new ElementsOfClassSelectionFilter<Pipe>(), "Select pipe");
             var sb = new StringBuilder();
-            using (var tx = new Transaction(revitDocument))
+            using (var tx = new Transaction(RevitDocument))
             {
                 tx.Start("GetInfo");
 
-                if (revitDocument.GetElement(pickedObj.ElementId) is Pipe e)
+                if (RevitDocument.GetElement(pickedObj.ElementId) is Pipe e)
                 {
                     sb.Append(GetStartToEndPipeOffset(e));
                     sb.Append(GetStartToEndPipeOffsetFromSurveyPoint(e));
@@ -53,7 +63,7 @@ namespace Revit_Utilities.Gladkoe
         private static string GetStartToEndPipeOffsetFromSurveyPoint(Pipe element)
         {
             StringBuilder sb = new StringBuilder();
-            BasePoint projectPoint = new FilteredElementCollector(revitDocument).OfClass(typeof(BasePoint)).Cast<BasePoint>().First(x => !x.IsShared);
+            BasePoint projectPoint = new FilteredElementCollector(RevitDocument).OfClass(typeof(BasePoint)).Cast<BasePoint>().First(x => !x.IsShared);
 
             var px = projectPoint.get_Parameter(BuiltInParameter.BASEPOINT_EASTWEST_PARAM).AsDouble();
             var py = projectPoint.get_Parameter(BuiltInParameter.BASEPOINT_NORTHSOUTH_PARAM).AsDouble();
@@ -69,7 +79,7 @@ namespace Revit_Utilities.Gladkoe
             sb.Append(
                 $" ({Math.Round(UnitUtils.ConvertFromInternalUnits(elementStartPoint.Z, DisplayUnitType.DUT_MILLIMETERS), 1, MidpointRounding.ToEven)} - "
                 + $"{Math.Round(UnitUtils.ConvertFromInternalUnits(elementEndPoint.Z, DisplayUnitType.DUT_MILLIMETERS), 1, MidpointRounding.ToEven)})");
-            
+
             return sb.ToString();
         }
 
@@ -88,7 +98,7 @@ namespace Revit_Utilities.Gladkoe
 
         private static void GetPipeOffsets()
         {
-            var pipes = new FilteredElementCollector(revitDocument).OfClass(typeof(Pipe)).Cast<Pipe>();
+            var pipes = new FilteredElementCollector(RevitDocument).OfClass(typeof(Pipe)).Cast<Pipe>();
 
             foreach (Pipe p in pipes)
             {

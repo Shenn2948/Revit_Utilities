@@ -13,13 +13,19 @@ using Revit_Utilities.Utilities;
 
 namespace Revit_Utilities.Gladkoe.ParameterDataManipulations
 {
-    public static class SaveParameters
+    using Autodesk.Revit.Attributes;
+
+    [Transaction(TransactionMode.Manual)]
+    [Regeneration(RegenerationOption.Manual)]
+    public class SaveParameters : IExternalCommand
     {
         public static Document RevitDocument { get; private set; }
 
-        public static void Save(Document doc)
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            RevitDocument = doc;
+            UIApplication uiapp = commandData.Application;
+            UIDocument uidoc = uiapp.ActiveUIDocument;
+            RevitDocument = uidoc.Document;
 
             try
             {
@@ -29,6 +35,8 @@ namespace Revit_Utilities.Gladkoe.ParameterDataManipulations
             {
                 TaskDialog.Show("Save parameters", e.Message);
             }
+
+            return Result.Succeeded;
         }
 
         private static void SerializeDataToJson()

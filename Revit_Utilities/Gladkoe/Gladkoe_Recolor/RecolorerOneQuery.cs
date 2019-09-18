@@ -1,25 +1,36 @@
-namespace Revit_Utilities.Gladkoe_Recolor
+namespace Revit_Utilities.Gladkoe.Gladkoe_Recolor
 {
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Linq;
 
+    using Autodesk.Revit.ApplicationServices;
+    using Autodesk.Revit.Attributes;
     using Autodesk.Revit.DB;
     using Autodesk.Revit.UI;
 
-    public static class RecolorerOneQuery
+    [Transaction(TransactionMode.Manual)]
+    [Regeneration(RegenerationOption.Manual)]
+    public class RecolorerOneQuery : IExternalCommand
     {
-        public static void ChangeColor(Document doc)
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
+            UIApplication uiapp = commandData.Application;
+            UIDocument uidoc = uiapp.ActiveUIDocument;
+            Application app = uiapp.Application;
+            Document doc = uidoc.Document;
+
             try
             {
                 ChangeColorOneQuery(doc);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                TaskDialog.Show("Recolor", ex.Message);
+                TaskDialog.Show("Recolor", e.Message);
             }
+
+            return Result.Succeeded;
         }
 
         private static ElementId GetMaterialId(Document doc, string pipeType)
