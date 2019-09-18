@@ -87,7 +87,7 @@ namespace Gladkoe.ParameterDataManipulations
 
                 foreach (var element in elements)
                 {
-                    foreach (Parameter parameter in element.Value.GetOrderedParameters().Where(p => !p.IsReadOnly))
+                    foreach (var parameter in element.Value.GetOrderedParameters().Where(p => !p.IsReadOnly && (p.StorageType != StorageType.ElementId)))
                     {
                         foreach (var paramData in groupedByIdData[element.Key])
                         {

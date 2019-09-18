@@ -16,7 +16,7 @@
                 case StorageType.Double:
                     if (param.AsInteger() == 0)
                     {
-                        s = "0";
+                        s = string.Empty;
                         break;
                     }
 
@@ -26,7 +26,7 @@
                 case StorageType.Integer:
                     if (param.AsInteger() == 0)
                     {
-                        s = "0";
+                        s = string.Empty;
                         break;
                     }
 
@@ -38,7 +38,14 @@
                     break;
 
                 case StorageType.ElementId:
-                    s = param.HasValue ? param.AsElementId().IntegerValue.ToString() : string.Empty;
+                    if (param.AsElementId() == null)
+                    {
+                        s = null;
+
+                        break;
+                    }
+
+                    s = param.HasValue ? param.AsValueString() : string.Empty;
                     break;
 
                 case StorageType.None:
@@ -67,15 +74,30 @@
                     break;
 
                 case StorageType.Integer:
+                    if (string.IsNullOrEmpty(value.ToString()))
+                    {
+                        break;
+                    }
+
                     param.Set(Convert.ToInt32(value));
                     break;
 
                 case StorageType.String:
+                    if (string.IsNullOrEmpty(value.ToString()))
+                    {
+                        break;
+                    }
+
                     param.Set(value.ToString());
                     break;
 
                 case StorageType.ElementId:
-                    param.Set(new ElementId(Convert.ToInt32(value)));
+                    if (string.IsNullOrEmpty(value.ToString()))
+                    {
+                        break;
+                    }
+
+                    param.Set((ElementId)default);
                     break;
 
                 case StorageType.None:
