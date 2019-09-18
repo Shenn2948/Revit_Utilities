@@ -72,8 +72,8 @@ namespace Gladkoe.ParameterDataManipulations
         private static void CopyParameters(Document doc)
         {
             var elements = GetElements(doc)
-                .Where(e => (GetParameter(e, "UID") != null) && (GetParameter(e, "UID").AsString() != null))
-                .GroupBy(e => GetParameter(e, "UID").AsString(), e => e).ToDictionary(e => e.Key, e => e.FirstOrDefault());
+                .Where(e => e.LookupParameter("UID") != null && e.LookupParameter("UID").AsString() != null)
+                .GroupBy(e => e.LookupParameter("UID").AsString(), e => e).ToDictionary(e => e.Key, e => e.FirstOrDefault());
             DataSet dataSet = JsonConvert.DeserializeObject<DataSet>(File.ReadAllText(ResultsHelper.GetOpenJsonFilePath()));
 
             var groupedByIdData = dataSet.Tables.Cast<DataTable>()
@@ -133,11 +133,6 @@ namespace Gladkoe.ParameterDataManipulations
                     })
                 .Where(e => e.GetOrderedParameters().FirstOrDefault(p => p.Definition.Name.Equals("UID")) != null)
                 .ToList();
-        }
-
-        private static Parameter GetParameter(Element element, string parameterName)
-        {
-            return element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals(parameterName));
         }
     }
 }
