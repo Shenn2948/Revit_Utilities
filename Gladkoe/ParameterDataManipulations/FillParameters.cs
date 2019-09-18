@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Text;
 
     using Autodesk.Revit.Attributes;
     using Autodesk.Revit.DB;
@@ -39,7 +40,7 @@
 
             using (Transaction tran = new Transaction(RevitDocument))
             {
-                tran.Start("Заполнить номер участка линии");
+                tran.Start("Заполнить ID, Длину, Наружный диаметр, Условный диаметр");
 
                 SetParameters(elements);
 
@@ -49,8 +50,26 @@
 
         private static Parameter GetParameter(Element element, string parameterName)
         {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine($"Проблема в нахождении параметра \"{parameterName}\", проверьте верность наименования и наличие параметров.");
+            sb.AppendLine("Необходимо, чтобы категории:");
+            sb.AppendLine("\"Арматура трубопроводов\",");
+            sb.AppendLine("\"Оборудование\",");
+            sb.AppendLine("\"Гибкие трубы\",");
+            sb.AppendLine("\"Сантехнические приборы\",");
+            sb.AppendLine("\"Соединительные детали трубопроводов\"");
+            sb.AppendLine();
+            sb.AppendLine("содержали параметр:");
+            sb.AppendLine("\"UID\" (тип текст)");
+            sb.AppendLine();
+            sb.AppendLine("\"Трубы:\",");
+            sb.AppendLine("содержали параметр:");
+            sb.AppendLine("\"Наружный диаметр (тип - длина)\",");
+            sb.AppendLine("\"Условный диаметр (тип - длина)\",");
+            sb.AppendLine("\"Длина\"(тип - длина)");
+
             return element.GetOrderedParameters().FirstOrDefault(e => e.Definition.Name.Equals(parameterName))
-                   ?? throw new ArgumentException($"Проблема в нахождении параметра \"{parameterName}\", проверьте верность наименования и наличие параметров");
+                   ?? throw new ArgumentException(sb.ToString());
         }
 
         private static void SetParameters(List<Element> elements)

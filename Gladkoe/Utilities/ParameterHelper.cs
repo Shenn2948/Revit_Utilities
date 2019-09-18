@@ -1,5 +1,6 @@
 ﻿namespace Gladkoe.Utilities
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
 
@@ -13,10 +14,22 @@
             switch (param.StorageType)
             {
                 case StorageType.Double:
+                    if (param.AsInteger() == 0)
+                    {
+                        s = "0";
+                        break;
+                    }
+
                     s = param.HasValue ? param.AsValueString() : string.Empty;
                     break;
 
                 case StorageType.Integer:
+                    if (param.AsInteger() == 0)
+                    {
+                        s = "0";
+                        break;
+                    }
+
                     s = param.HasValue ? param.AsInteger().ToString() : string.Empty;
                     break;
 
@@ -45,24 +58,30 @@
             switch (param.StorageType)
             {
                 case StorageType.Double:
-                    param.SetValueString(value.ToString());
+                    if (string.IsNullOrEmpty(value.ToString()))
+                    {
+                        break;
+                    }
+
+                    param.Set(Convert.ToDouble(value));
                     break;
 
                 case StorageType.Integer:
+                    param.Set(Convert.ToInt32(value));
                     break;
 
                 case StorageType.String:
+                    param.Set(value.ToString());
                     break;
 
                 case StorageType.ElementId:
+                    param.Set(new ElementId(Convert.ToInt32(value)));
                     break;
 
                 case StorageType.None:
-                    // s = "?NONE?";
                     break;
 
                 default:
-                    // s = "?ELSE?";
                     break;
             }
         }

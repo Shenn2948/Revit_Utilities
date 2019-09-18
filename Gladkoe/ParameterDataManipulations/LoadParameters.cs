@@ -31,14 +31,13 @@ namespace Gladkoe.ParameterDataManipulations
             Application app = uiapp.Application;
             Document doc = uidoc.Document;
 
-            try
+            // try
             {
-                // SerializeDataToJson(doc);
                 CopyParameters(doc);
             }
-            catch (Exception e)
+            // catch (Exception e)
             {
-                TaskDialog.Show("Fill parameters", e.Message);
+                // TaskDialog.Show("Fill parameters", e.Message);
             }
 
             return Result.Succeeded;
@@ -53,7 +52,7 @@ namespace Gladkoe.ParameterDataManipulations
             var groupedByIdData = dataSet.Tables.Cast<DataTable>()
                 .SelectMany(e => e.AsEnumerable())
                 .GroupBy(p => p.Field<string>("UID"))
-                .ToDictionary(r => r.Key, r => r.SelectMany(p => p.Table.Columns.Cast<DataColumn>().Select(c => new { Name = c.ColumnName, Value = p[c] })));
+                .ToDictionary(r => r.Key, r => r.SelectMany(p => p.Table.Columns.Cast<DataColumn>().Select(c => new { Name = c.ColumnName, ParamValue = p[c] })));
 
             foreach (var item in groupedByIdData)
             {
@@ -72,46 +71,34 @@ namespace Gladkoe.ParameterDataManipulations
 
         private static void CopyParameters(Document doc)
         {
-            var elements = GetElements(doc).Where(e => GetParameter(e, "UID") != null).GroupBy(e => GetParameter(e, "UID")?.AsString(), e => e).ToDictionary();
+            var elements = GetElements(doc)
+                .Where(e => (GetParameter(e, "UID") != null) && (GetParameter(e, "UID").AsString() != null))
+                .GroupBy(e => GetParameter(e, "UID").AsString(), e => e).ToDictionary(e => e.Key, e => e.FirstOrDefault());
             DataSet dataSet = JsonConvert.DeserializeObject<DataSet>(File.ReadAllText(ResultsHelper.GetOpenJsonFilePath()));
 
             var groupedByIdData = dataSet.Tables.Cast<DataTable>()
                 .SelectMany(e => e.AsEnumerable())
                 .GroupBy(p => p.Field<string>("UID"))
-                .ToDictionary(r => r.Key, r => r.SelectMany(p => p.Table.Columns.Cast<DataColumn>().Select(c => new { Name = c.ColumnName, Value = p[c] })));
+                .ToDictionary(r => r.Key, r => r.SelectMany(p => p.Table.Columns.Cast<DataColumn>().Select(c => new { Name = c.ColumnName, ParamValue = p[c] })));
 
             using (Transaction tran = new Transaction(doc))
             {
                 tran.Start("Перенос параметров из JSON");
 
-                // foreach (Element element in elements)
-                // {
-                // foreach (Parameter parameter in element.GetOrderedParameters())
-                // {
-                // foreach (var item in groupedByIdData)
-                // {
-                // if (item.)
-                // {
-                // }
-                // }
-                // }
-                // foreach (var item in groupedByIdData)
-                // {
-                // Parameter uid = GetParameter(element, "UID");
-                // if (uid.GetStringParameterValue().Equals("1933405"))
-                // {
-                // // item.Key
-                // foreach (var parameter in item.Value)
-                // {
-                // if ((parameter.Value != null) && (parameter.Value.ToString() != string.Empty) && parameter.Name.Equals("Автор"))
-                // {
-                // Parameter resultParameter = GetParameter(element, parameter.Name);
-                // resultParameter?.SetValueString(parameter.Value.ToString());
-                // }
-                // }
-                // }
-                // }
-                // }
+                foreach (var element in elements)
+                {
+                    foreach (Parameter parameter in element.Value.GetOrderedParameters().Where(p => !p.IsReadOnly))
+                    {
+                        foreach (var paramData in groupedByIdData[element.Key])
+                        {
+                            if (parameter.Definition.Name.Equals(paramData.Name))
+                            {
+                                parameter.SetObjectParameterValue(paramData.ParamValue);
+                            }
+                        }
+                    }
+                }
+
                 tran.Commit();
             }
         }
@@ -133,7 +120,7 @@ namespace Gladkoe.ParameterDataManipulations
                         }))
                 .Where(e => e.Category != null)
                 .Where(
-                    delegate(Element e)
+                    delegate (Element e)
                     {
                         Parameter volume = e.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED);
 
