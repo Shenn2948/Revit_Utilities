@@ -1,11 +1,9 @@
 ﻿using Application = Autodesk.Revit.ApplicationServices.Application;
-using DataTable = System.Data.DataTable;
-using Parameter = Autodesk.Revit.DB.Parameter;
 
 // ReSharper disable StyleCop.SA1108
 //// ReSharper disable StyleCop.SA1512
 // ReSharper disable StyleCop.SA1515
-namespace Revit_Utilities.ParameterDataManipulations
+namespace Gladkoe.ParameterDataManipulations
 {
     using System;
     using System.Collections.Generic;
@@ -18,9 +16,9 @@ namespace Revit_Utilities.ParameterDataManipulations
     using Autodesk.Revit.DB;
     using Autodesk.Revit.UI;
 
-    using Newtonsoft.Json;
+    using Gladkoe.Utilities;
 
-    using Revit_Utilities.Utilities;
+    using Newtonsoft.Json;
 
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]

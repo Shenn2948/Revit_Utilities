@@ -1,4 +1,4 @@
-﻿namespace Revit_Utilities.ParameterDataManipulations
+﻿namespace Gladkoe.ParameterDataManipulations
 {
     using System;
     using System.Collections.Generic;

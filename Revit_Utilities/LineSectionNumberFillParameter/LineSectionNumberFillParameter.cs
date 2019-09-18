@@ -1,4 +1,4 @@
-﻿namespace Revit_Utilities.LineSectionNumberFillParameter
+﻿namespace Gladkoe.LineSectionNumberFillParameter
 {
     using System;
     using System.Collections.Generic;
@@ -8,8 +8,6 @@
     using Autodesk.Revit.Attributes;
     using Autodesk.Revit.DB;
     using Autodesk.Revit.UI;
-
-    using Revit_Utilities.Utilities;
 
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]

@@ -1,12 +1,7 @@
-﻿namespace Revit_Utilities.Utilities
+﻿namespace Gladkoe.Utilities
 {
-    using System.Collections.Generic;
     using System.IO;
-    using System.Text;
     using System.Windows.Forms;
-
-    using Autodesk.Revit.DB;
-    using Autodesk.Revit.UI;
 
     /// <summary>
     /// The result showing helper.

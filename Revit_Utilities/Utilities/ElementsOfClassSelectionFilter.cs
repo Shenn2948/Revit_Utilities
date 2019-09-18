@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-
-using Autodesk.Revit.DB;
-using Autodesk.Revit.UI.Selection;
-
-namespace Revit_Utilities.Utilities
+﻿namespace Gladkoe.Utilities
 {
+    using Autodesk.Revit.DB;
+    using Autodesk.Revit.UI.Selection;
+
     /// <summary>
     /// Allow selection of elements of type T only.
     /// </summary>

@@ -1,4 +1,4 @@
-﻿namespace Revit_Utilities.LineSectionNumberFillParameter
+﻿namespace Gladkoe.LineSectionNumberFillParameter
 {
     partial class ResultWindow
     {

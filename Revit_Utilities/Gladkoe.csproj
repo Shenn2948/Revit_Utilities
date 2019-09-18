@@ -13,8 +13,8 @@
     <ProjectGuid>{7E5C1081-736C-43E0-B70E-3B84D318D1B4}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Revit_Utilities</RootNamespace>
-    <AssemblyName>Revit_Utilities</AssemblyName>
+    <RootNamespace>Gladkoe</RootNamespace>
+    <AssemblyName>Gladkoe</AssemblyName>
     <TargetFrameworkVersion>v4.7</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
