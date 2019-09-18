@@ -1,24 +1,43 @@
-﻿namespace Revit_Utilities.ParameterDataManipulations
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Diagnostics;
+using System.Linq;
+
+using Autodesk.Revit.Attributes;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+
+using Gladkoe.Utilities;
+
+using Newtonsoft.Json;
+
+namespace Gladkoe.ParameterDataManipulations
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Data;
-    using System.Diagnostics;
-    using System.Linq;
-
-    using Autodesk.Revit.Attributes;
-    using Autodesk.Revit.DB;
-    using Autodesk.Revit.UI;
-
-    using Newtonsoft.Json;
-
-    using Revit_Utilities.Utilities;
-
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     public class SaveParameters : IExternalCommand
     {
         public static Document RevitDocument { get; private set; }
+
+        public static void SerializeDataToJson()
+        {
+            var sw = Stopwatch.StartNew();
+
+            Dictionary<string, List<Element>> elements = GetElements(RevitDocument);
+            DataSet ds = GetDataSet(elements);
+
+            string json = JsonConvert.SerializeObject(ds, Formatting.Indented);
+
+            sw.Stop();
+
+            if (ResultsHelper.WriteJsonFile(json))
+            {
+                TaskDialog.Show(
+                    "Parameter Export",
+                    $"{elements.Count} categories and a total of {elements.Values.Sum(list => list.Count)} elements exported in {sw.Elapsed.TotalSeconds:F2} seconds.");
+            }
+        }
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -36,25 +55,6 @@
             }
 
             return Result.Succeeded;
-        }
-
-        private static void SerializeDataToJson()
-        {
-            var sw = Stopwatch.StartNew();
-
-            Dictionary<string, List<Element>> elements = GetElements(RevitDocument);
-            DataSet ds = GetDataSet(elements);
-
-            string json = JsonConvert.SerializeObject(ds, Formatting.Indented);
-
-            sw.Stop();
-
-            if (ResultsHelper.WriteJsonFile(json))
-            {
-                TaskDialog.Show(
-                    "Parameter Export",
-                    $"{elements.Count} categories and a total of {elements.Values.Sum(list => list.Count)} elements exported in {sw.Elapsed.TotalSeconds:F2} seconds.");
-            }
         }
 
         private static DataSet GetDataSet(Dictionary<string, List<Element>> sortedElements)
