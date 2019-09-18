@@ -82,9 +82,6 @@
     <Compile Include="Utilities\ResultsHelper.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Revit_Utilities.addin" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="packages.config" />
     <None Include="Settings.StyleCop" />
   </ItemGroup>

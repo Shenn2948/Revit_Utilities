@@ -1,25 +1,25 @@
-﻿using Application = Autodesk.Revit.ApplicationServices.Application;
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+
+using Autodesk.Revit.Attributes;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+
+using Gladkoe.Utilities;
+
+using Newtonsoft.Json;
+
+using Application = Autodesk.Revit.ApplicationServices.Application;
 
 // ReSharper disable StyleCop.SA1108
 //// ReSharper disable StyleCop.SA1512
 // ReSharper disable StyleCop.SA1515
 namespace Gladkoe.ParameterDataManipulations
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Data;
-    using System.Diagnostics;
-    using System.IO;
-    using System.Linq;
-
-    using Autodesk.Revit.Attributes;
-    using Autodesk.Revit.DB;
-    using Autodesk.Revit.UI;
-
-    using Gladkoe.Utilities;
-
-    using Newtonsoft.Json;
-
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     public class LoadParameters : IExternalCommand
@@ -72,7 +72,7 @@ namespace Gladkoe.ParameterDataManipulations
 
         private static void CopyParameters(Document doc)
         {
-            var elements = GetElements(doc).Where(e => GetParameter(e, "UID") != null);
+            var elements = GetElements(doc).Where(e => GetParameter(e, "UID") != null).GroupBy(e => GetParameter(e, "UID")?.AsString(), e => e).ToDictionary();
             DataSet dataSet = JsonConvert.DeserializeObject<DataSet>(File.ReadAllText(ResultsHelper.GetOpenJsonFilePath()));
 
             var groupedByIdData = dataSet.Tables.Cast<DataTable>()
@@ -84,34 +84,34 @@ namespace Gladkoe.ParameterDataManipulations
             {
                 tran.Start("Перенос параметров из JSON");
 
-                if (expr)
-                {
-                    
-                }
-
-                foreach (Element element in elements)
-                {
-                    foreach (Parameter parameter in element.GetOrderedParameters())
-                    {
-                    }
-
-                    foreach (var item in groupedByIdData)
-                    {
-                        Parameter uid = GetParameter(element, "UID");
-                        if (uid.GetStringParameterValue().Equals("1933405"))
-                        {
-                            // item.Key
-                            foreach (var parameter in item.Value)
-                            {
-                                if ((parameter.Value != null) && (parameter.Value.ToString() != string.Empty) && parameter.Name.Equals("Автор"))
-                                {
-                                    Parameter resultParameter = GetParameter(element, parameter.Name);
-                                    resultParameter?.SetValueString(parameter.Value.ToString());
-                                }
-                            }
-                        }
-                    }
-                }
+                // foreach (Element element in elements)
+                // {
+                // foreach (Parameter parameter in element.GetOrderedParameters())
+                // {
+                // foreach (var item in groupedByIdData)
+                // {
+                // if (item.)
+                // {
+                // }
+                // }
+                // }
+                // foreach (var item in groupedByIdData)
+                // {
+                // Parameter uid = GetParameter(element, "UID");
+                // if (uid.GetStringParameterValue().Equals("1933405"))
+                // {
+                // // item.Key
+                // foreach (var parameter in item.Value)
+                // {
+                // if ((parameter.Value != null) && (parameter.Value.ToString() != string.Empty) && parameter.Name.Equals("Автор"))
+                // {
+                // Parameter resultParameter = GetParameter(element, parameter.Name);
+                // resultParameter?.SetValueString(parameter.Value.ToString());
+                // }
+                // }
+                // }
+                // }
+                // }
 
                 tran.Commit();
             }
