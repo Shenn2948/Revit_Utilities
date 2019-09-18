@@ -24,8 +24,6 @@ namespace Revit_Utilities.Gladkoe
             try
             {
                 FillParametersAction();
-
-                // Elevation2(doc);
             }
             catch (Exception e)
             {
@@ -43,7 +41,8 @@ namespace Revit_Utilities.Gladkoe
 
                 if (revitDocument.GetElement(pickedObj.ElementId) is Pipe e)
                 {
-                    sb.Append(GetStartToEndPipeOffset(e) + GetStartToEndPipeOffsetFromSurveyPoint(e));
+                    sb.Append(GetStartToEndPipeOffset(e));
+                    sb.Append(GetStartToEndPipeOffsetFromSurveyPoint(e));
                     TaskDialog.Show("Info", sb.ToString());
                 }
 
@@ -68,8 +67,9 @@ namespace Revit_Utilities.Gladkoe
             var elementEndPoint = c.GetEndPoint(1).Add(project);
 
             sb.Append(
-                $" ({Math.Round(elementStartPoint.Z.FeetAsMillimeters(), 1, MidpointRounding.ToEven)} - "
-                + $"{Math.Round(elementEndPoint.Z.FeetAsMillimeters(), 1, MidpointRounding.ToEven)})");
+                $" ({Math.Round(UnitUtils.ConvertFromInternalUnits(elementStartPoint.Z, DisplayUnitType.DUT_MILLIMETERS), 1, MidpointRounding.ToEven)} - "
+                + $"{Math.Round(UnitUtils.ConvertFromInternalUnits(elementEndPoint.Z, DisplayUnitType.DUT_MILLIMETERS), 1, MidpointRounding.ToEven)})");
+            
             return sb.ToString();
         }
 
@@ -80,13 +80,13 @@ namespace Revit_Utilities.Gladkoe
             Curve c = lc.Curve;
 
             sb.Append(
-                $"{Math.Round(c.GetEndPoint(0).Z.FeetAsMillimeters(), 1, MidpointRounding.ToEven)} - "
-                + $"{Math.Round(c.GetEndPoint(1).Z.FeetAsMillimeters(), 1, MidpointRounding.ToEven)}");
+                $"From {Math.Round(UnitUtils.ConvertFromInternalUnits(c.GetEndPoint(0).Z, DisplayUnitType.DUT_MILLIMETERS), 1, MidpointRounding.ToEven)} to "
+                + $"{Math.Round(UnitUtils.ConvertFromInternalUnits(c.GetEndPoint(1).Z, DisplayUnitType.DUT_MILLIMETERS), 1, MidpointRounding.ToEven)}");
 
             return sb.ToString();
         }
 
-        private static void GetStartToEndPipeOffsets()
+        private static void GetPipeOffsets()
         {
             var pipes = new FilteredElementCollector(revitDocument).OfClass(typeof(Pipe)).Cast<Pipe>();
 

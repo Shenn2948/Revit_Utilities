@@ -96,7 +96,8 @@ namespace Revit_Utilities.Gladkoe.ParameterDataManipulations
                             {
                                 Parameter resultParameter = GetParameter(element, parameter.Name);
 
-
+                                //resultParameter.Set(parameter.Value);
+                                resultParameter?.SetValueString(parameter.Value.ToString());
                             }
                         }
                     }

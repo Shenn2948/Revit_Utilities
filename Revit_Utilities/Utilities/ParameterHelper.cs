@@ -8,29 +8,6 @@
 
     public static class ParameterHelper
     {
-        private const double MetersInFeet = 0.3048;
-
-        public static double FeetAsMeters(this double param)
-        {
-            double imperialValue = param;
-
-            return imperialValue * MetersInFeet; 
-        }
-
-        public static double FeetAsMillimeters(this double param)
-        {
-            double imperialValue = param;
-
-            return imperialValue * MetersInFeet * 1000;
-        }
-
-        public static double FeetAsCentimeters(this double param)
-        {
-            double imperialValue = param;
-
-            return imperialValue * MetersInFeet * 100;
-        }
-
         public static string GetStringParameterValue(this Parameter param)
         {
             string s;
@@ -62,6 +39,33 @@
             }
 
             return s;
+        }
+
+        public static void SetObjectParameterValue(this Parameter param, object value)
+        {
+            switch (param.StorageType)
+            {
+                case StorageType.Double:
+                    param.SetValueString(value.ToString());
+                    break;
+
+                case StorageType.Integer:
+                    break;
+
+                case StorageType.String:
+                    break;
+
+                case StorageType.ElementId:
+                    break;
+
+                case StorageType.None:
+                    // s = "?NONE?";
+                    break;
+
+                default:
+                    // s = "?ELSE?";
+                    break;
+            }
         }
 
         public static Dictionary<TKey, List<TValue>> ToDictionary<TKey, TValue>(this IEnumerable<IGrouping<TKey, TValue>> groupings)
