@@ -1,19 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-using Autodesk.Revit.Attributes;
-using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Plumbing;
-using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Selection;
-
-using Revit_Utilities.Utilities;
-
-namespace Revit_Utilities.Gladkoe
+﻿namespace Revit_Utilities
 {
+    using System;
+    using System.Linq;
+    using System.Text;
+
     using Autodesk.Revit.Attributes;
+    using Autodesk.Revit.DB;
+    using Autodesk.Revit.DB.Plumbing;
+    using Autodesk.Revit.UI;
+    using Autodesk.Revit.UI.Selection;
+
+    using Revit_Utilities.Utilities;
 
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]

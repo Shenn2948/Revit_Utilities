@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29209.62
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FindParameters", "Revit_Utilities\FindParameters.csproj", "{7E5C1081-736C-43E0-B70E-3B84D318D1B4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gladkoe", "Revit_Utilities\Gladkoe.csproj", "{7E5C1081-736C-43E0-B70E-3B84D318D1B4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

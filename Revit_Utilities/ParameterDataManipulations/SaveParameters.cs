@@ -1,19 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics;
-using System.Linq;
-
-using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
-
-using Newtonsoft.Json;
-
-using Revit_Utilities.Utilities;
-
-namespace Revit_Utilities.Gladkoe.ParameterDataManipulations
+﻿namespace Revit_Utilities.ParameterDataManipulations
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Diagnostics;
+    using System.Linq;
+
     using Autodesk.Revit.Attributes;
+    using Autodesk.Revit.DB;
+    using Autodesk.Revit.UI;
+
+    using Newtonsoft.Json;
+
+    using Revit_Utilities.Utilities;
 
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]

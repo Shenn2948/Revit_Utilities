@@ -1,27 +1,27 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-
-using Autodesk.Revit.Attributes;
-using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
-
-using Newtonsoft.Json;
-
-using Revit_Utilities.Utilities;
-
-using Application = Autodesk.Revit.ApplicationServices.Application;
+﻿using Application = Autodesk.Revit.ApplicationServices.Application;
 using DataTable = System.Data.DataTable;
 using Parameter = Autodesk.Revit.DB.Parameter;
 
 // ReSharper disable StyleCop.SA1108
 //// ReSharper disable StyleCop.SA1512
 // ReSharper disable StyleCop.SA1515
-namespace Revit_Utilities.Gladkoe.ParameterDataManipulations
+namespace Revit_Utilities.ParameterDataManipulations
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Diagnostics;
+    using System.IO;
+    using System.Linq;
+
+    using Autodesk.Revit.Attributes;
+    using Autodesk.Revit.DB;
+    using Autodesk.Revit.UI;
+
+    using Newtonsoft.Json;
+
+    using Revit_Utilities.Utilities;
+
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     public class LoadParameters : IExternalCommand
