@@ -112,5 +112,10 @@
         {
             return groupings.ToDictionary(group => group.Key, group => group.ToList());
         }
+
+        public static int ToInt32(this string s)
+        {
+            return Convert.ToInt32(s);
+        }
     }
 }
