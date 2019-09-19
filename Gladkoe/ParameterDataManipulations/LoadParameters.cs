@@ -107,7 +107,7 @@ namespace Gladkoe.ParameterDataManipulations
 
             var groupedByIdData = dataSet.Tables.Cast<DataTable>()
                 .SelectMany(e => e.AsEnumerable())
-                .GroupBy(p => p.Field<string>("f776cdec-f4d6-491d-a342-ef50f8f09d4e"))
+                .GroupBy(p => p.Field<string>("f776cdec-f4d6-491d-a342-ef50f8f09d4e").ToInt32()).OrderBy(i => i.Key)
                 .ToDictionary(r => r.Key, r => r.SelectMany(p => p.Table.Columns.Cast<DataColumn>().Select(c => new { Name = c.ColumnName, ParamValue = p[c] })));
 
             var groupedByIdData2 = dataSet.Tables.Cast<DataTable>()
@@ -118,25 +118,19 @@ namespace Gladkoe.ParameterDataManipulations
                 .GroupBy(p => p.Name, (p) => (GUID: p.GUID, ParamVal: p.ParamValue))
                 .ToDictionary(e => e.Key, e => e.ToList());
 
-            // .GroupBy(p => p, p => p.Table.Columns.Cast<DataColumn>().Select(c => new { Name = c.ColumnName, ParamValue = p[c] }))
-            // .ToDictionary();
-            // .GroupBy(p => p.Field<string>("f776cdec-f4d6-491d-a342-ef50f8f09d4e"))
-            // .ToDictionary(r => r.Key, r => r.SelectMany(p => p.Table.Columns.Cast<DataColumn>().Select(c => new { Name = c.ColumnName, ParamValue = p[c] })));
             using (Transaction tran = new Transaction(doc))
             {
                 tran.Start("Перенос параметров из JSON");
                 {
-                    // foreach (var data in groupedByIdData)
-                    // foreach (var parameter in element.Value.GetOrderedParameters().Where(p => !p.IsReadOnly && (p.StorageType != StorageType.ElementId) && p.IsShared))
-                    // {
-                    // foreach (var paramData in groupedByIdData[element.Key])
-                    // {
-                    // if (parameter.GUID.ToString().Equals(paramData.Name))
-                    // {
-                    // parameter.SetObjectParameterValue(paramData.ParamValue);
-                    // }
-                    // }
-                    // }
+                    foreach (var element in elements)
+                    {
+                        var p = groupedByIdData[element.Key];
+
+                        foreach (var VARIABLE in groupedByIdData[element.Key])
+                        {
+                            
+                        }
+                    }
                 }
 
                 tran.Commit();
@@ -160,7 +154,7 @@ namespace Gladkoe.ParameterDataManipulations
                         }))
                 .Where(e => e.Category != null)
                 .Where(
-                    delegate(Element e)
+                    delegate (Element e)
                     {
                         Parameter volume = e.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED);
 

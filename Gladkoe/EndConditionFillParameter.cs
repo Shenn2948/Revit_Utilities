@@ -4,42 +4,57 @@
     using System.Collections.Generic;
     using System.Linq;
 
+    using Autodesk.Revit.Attributes;
     using Autodesk.Revit.DB;
     using Autodesk.Revit.UI;
 
-    public class EndConditionFillParameter
+    [Transaction(TransactionMode.Manual)]
+    [Regeneration(RegenerationOption.Manual)]
+    public class EndConditionFillParameter : IExternalCommand
     {
-        public static void FillParams(Document doc, UIDocument uidoc)
+        public static Document RevitDocument { get; private set; }
+
+        public static UIDocument UiRevitDocument { get; private set; }
+
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
+            UIApplication uiapp = commandData.Application;
+            UiRevitDocument = uiapp.ActiveUIDocument;
+            RevitDocument = UiRevitDocument.Document;
+
             try
             {
-                FillParametersAction(doc);
+                FillParametersAction(RevitDocument, UiRevitDocument);
             }
             catch (Exception e)
             {
                 TaskDialog.Show("Fill parameters", e.Message);
             }
+
+            return Result.Succeeded;
         }
 
-        private static void FillParametersAction(Document doc)
+        private static void FillParametersAction(Document doc, UIDocument uidoc)
         {
             // концевое условие - фланец
             List<ElementId> flanges = GetFlange(doc);
 
+            uidoc.Selection.SetElementIds(flanges);
+
             // концевое условие - сварка
-            List<ElementId> welds = GetWelds(doc, flanges);
-            using (Transaction tran = new Transaction(doc))
-            {
-                tran.Start("Fill parameters");
-
-                SetFlangesParameters(doc, flanges, "Фланец", "Сварной шов", "Сварной шов", "Сварной шов");
-
-                SetWeldParameters(doc, welds);
-
-                tran.Commit();
-            }
-
-            TaskDialog.Show("Fill parameters", "Параметры заполнены");
+            // List<ElementId> welds = GetWelds(doc, flanges);
+            // using (Transaction tran = new Transaction(doc))
+            // {
+            //     tran.Start("Fill parameters");
+            //
+            //     SetFlangesParameters(doc, flanges, "Фланец", "Сварной шов", "Сварной шов", "Сварной шов");
+            //
+            //     SetWeldParameters(doc, welds);
+            //
+            //     tran.Commit();
+            // }
+            //
+            // TaskDialog.Show("Fill parameters", "Параметры заполнены");
         }
 
         private static Parameter GetParameter(Element element, string parameterName)
