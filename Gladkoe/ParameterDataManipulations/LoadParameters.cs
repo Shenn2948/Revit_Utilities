@@ -77,23 +77,22 @@ namespace Gladkoe.ParameterDataManipulations
                 .Where(e => e.LookupParameter("UID") != null)
                 .GroupBy(e => e.LookupParameter("UID").AsString(), e => e).ToDictionary(e => e.Key, e => e.FirstOrDefault());
             DataSet dataSet = JsonConvert.DeserializeObject<DataSet>(File.ReadAllText(ResultsHelper.GetOpenJsonFilePath()));
-
+            
             var groupedByIdData = dataSet.Tables.Cast<DataTable>()
                 .SelectMany(e => e.AsEnumerable())
-                .GroupBy(p => p.Field<string>("UID"))
+                .GroupBy(p => p.Field<string>("f776cdec-f4d6-491d-a342-ef50f8f09d4e"))
                 .ToDictionary(r => r.Key, r => r.SelectMany(p => p.Table.Columns.Cast<DataColumn>().Select(c => new { Name = c.ColumnName, ParamValue = p[c] })));
 
             using (Transaction tran = new Transaction(doc))
             {
                 tran.Start("Перенос параметров из JSON");
-                // TODO CHECK IF ELEMENT HAS PARAMETER FIRST, THEN SET (возможно присваивается категория и имя типа и тогда создается новый сварной шов)
                 foreach (var element in elements)
                 {
-                    foreach (var parameter in element.Value.GetOrderedParameters().Where(p => !p.IsReadOnly && (p.StorageType != StorageType.ElementId)))
+                    foreach (var parameter in element.Value.GetOrderedParameters().Where(p => !p.IsReadOnly && (p.StorageType != StorageType.ElementId) && p.IsShared))
                     {
                         foreach (var paramData in groupedByIdData[element.Key])
                         {
-                            if (parameter.Definition.Name.Equals(paramData.Name))
+                            if (parameter.GUID.ToString().Equals(paramData.Name))
                             {
                                 parameter.SetObjectParameterValue(paramData.ParamValue);
                             }

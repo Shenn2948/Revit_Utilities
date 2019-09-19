@@ -80,12 +80,12 @@ namespace Gladkoe.ParameterDataManipulations
                 // row["ID"] = item.Id.IntegerValue.ToString();
                 foreach (Parameter parameter in item.GetOrderedParameters().Where(p => (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES) && p.IsShared))
                 {
-                    if (!table.Columns.Contains(parameter.Definition.Name))
+                    if (!table.Columns.Contains(parameter.GUID.ToString()))
                     {
-                        table.Columns.Add(parameter.Definition.Name);
+                        table.Columns.Add(parameter.GUID.ToString());
                     }
 
-                    row[parameter.Definition.Name] = parameter.GetStringParameterValue();
+                    row[parameter.GUID.ToString()] = parameter.GetStringParameterValue();
                 }
 
                 table.Rows.Add(row);
@@ -94,6 +94,31 @@ namespace Gladkoe.ParameterDataManipulations
             return table;
         }
 
+        // private static DataTable GetTable(KeyValuePair<string, List<Element>> element)
+        // {
+        //     var table = new DataTable { TableName = element.Key };
+        //
+        //     // table.Columns.Add("ID");
+        //     foreach (Element item in element.Value)
+        //     {
+        //         DataRow row = table.NewRow();
+        //
+        //         // row["ID"] = item.Id.IntegerValue.ToString();
+        //         foreach (Parameter parameter in item.GetOrderedParameters().Where(p => (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES) && p.IsShared))
+        //         {
+        //             if (!table.Columns.Contains(parameter.Definition.Name))
+        //             {
+        //                 table.Columns.Add(parameter.Definition.Name);
+        //             }
+        //
+        //             row[parameter.Definition.Name] = parameter.GetStringParameterValue();
+        //         }
+        //
+        //         table.Rows.Add(row);
+        //     }
+        //
+        //     return table;
+        // }
         private static Dictionary<string, List<Element>> GetElements(Document doc)
         {
             return new FilteredElementCollector(doc).WhereElementIsNotElementType()
