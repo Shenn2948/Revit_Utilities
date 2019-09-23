@@ -1,0 +1,25 @@
+﻿<Window x:Class="Gladkoe.ParameterDataManipulations.Views.DuplicatesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:local="clr-namespace:Gladkoe.ParameterDataManipulations.Views"
+        mc:Ignorable="d"
+        d:DesignHeight="350" d:DesignWidth="450" Height="350" Width="450" MinHeight="450" MinWidth="350"
+        Title="Элементы, имеющие дубликаты в параметрах"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition />
+            <RowDefinition Height="50" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0">
+            <TextBox x:Name="DuplicatesResultBox" Margin="10,10,10,0" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                     TextWrapping="Wrap" />
+        </Grid>
+        <Grid Grid.Row="1">
+            <Button HorizontalAlignment="Center" VerticalAlignment="Center" Width="100" Height="30" Content="OK" Click="ButtonBase_OnClick" />
+        </Grid>
+    </Grid>
+</Window>

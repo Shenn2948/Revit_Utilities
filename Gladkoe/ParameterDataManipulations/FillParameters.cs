@@ -10,10 +10,15 @@
     using Autodesk.Revit.DB.Plumbing;
     using Autodesk.Revit.UI;
 
+    using Gladkoe.ParameterDataManipulations.Interfaces;
+    using Gladkoe.ParameterDataManipulations.Models;
+
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     public class FillParameters : IExternalCommand
     {
+        private static IGetRevitDataStrategy revitData;
+
         public static Document RevitDocument { get; private set; }
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
@@ -21,6 +26,8 @@
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             RevitDocument = uidoc.Document;
+
+            revitData = new ParamManipulGetRvtData();
 
             try
             {
@@ -36,11 +43,11 @@
 
         private static void FillParametersAction()
         {
-            List<Element> elements = GetElements();
+            List<Element> elements = revitData.GetElements(RevitDocument).ToList();
 
             using (Transaction tran = new Transaction(RevitDocument))
             {
-                tran.Start("Заполнить ID, Длину, Наружный диаметр, Условный диаметр");
+                tran.Start("Заполнить UID, Длину, Наружный диаметр, Условный диаметр");
 
                 SetParameters(elements);
 
@@ -121,37 +128,6 @@
             }
 
             TaskDialog.Show("Info", $"Элементов обработано {i}");
-        }
-
-        private static List<Element> GetElements()
-        {
-            return new FilteredElementCollector(RevitDocument).WhereElementIsNotElementType()
-                .WhereElementIsViewIndependent()
-                .WherePasses(
-                    new ElementMulticategoryFilter(
-                        new List<BuiltInCategory>
-                        {
-                            BuiltInCategory.OST_PipeAccessory,
-                            BuiltInCategory.OST_PipeCurves,
-                            BuiltInCategory.OST_MechanicalEquipment,
-                            BuiltInCategory.OST_PipeFitting,
-                            BuiltInCategory.OST_FlexPipeCurves,
-                            BuiltInCategory.OST_PlumbingFixtures
-                        }))
-                .ToElements()
-                .Where(
-                    delegate(Element e)
-                    {
-                        Parameter volume = e.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED);
-
-                        if ((e is FamilyInstance fs && (fs.SuperComponent != null)) || ((volume != null) && !volume.HasValue))
-                        {
-                            return false;
-                        }
-
-                        return true;
-                    })
-                .ToList();
         }
     }
 }

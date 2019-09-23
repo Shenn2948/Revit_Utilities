@@ -14,40 +14,32 @@ using Newtonsoft.Json;
 
 namespace Gladkoe.ParameterDataManipulations
 {
+    using System.Windows;
+
+    using Gladkoe.ParameterDataManipulations.Interfaces;
+    using Gladkoe.ParameterDataManipulations.Models;
+
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     public class SaveParameters : IExternalCommand
     {
+        private static IGetDataSetStrategy<string, List<Element>> dataSet;
+
+        private static IGetRevitDataStrategy revitData;
+
         public static Document RevitDocument { get; private set; }
-
-        public static void SerializeDataToJson()
-        {
-            var sw = Stopwatch.StartNew();
-
-            Dictionary<string, List<Element>> elements = GetElements(RevitDocument);
-            DataSet ds = GetDataSet(elements);
-
-            string json = JsonConvert.SerializeObject(ds, Formatting.Indented);
-
-            sw.Stop();
-
-            if (ResultsHelper.WriteJsonFile(json))
-            {
-                TaskDialog.Show(
-                    "Parameter Export",
-                    $"{elements.Count} categories and a total of {elements.Values.Sum(list => list.Count)} elements exported in {sw.Elapsed.TotalSeconds:F2} seconds.");
-            }
-        }
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             RevitDocument = uidoc.Document;
+            dataSet = new ParamManipulGetDataSet();
+            revitData = new ParamManipulGetRvtData();
 
             try
             {
-                SerializeDataToJson();
+                SerializeData(RevitDocument);
             }
             catch (Exception e)
             {
@@ -57,98 +49,73 @@ namespace Gladkoe.ParameterDataManipulations
             return Result.Succeeded;
         }
 
-        private static DataSet GetDataSet(Dictionary<string, List<Element>> sortedElements)
+        private static void SerializeData(Document doc)
         {
-            var ds = new DataSet();
-            foreach (var element in sortedElements)
+            var sw = Stopwatch.StartNew();
+
+            List<Element> elements = revitData.GetElements(doc).ToList();
+
+            if (DuplicateValidator.ValidateDuplicates(elements))
             {
-                ds.Tables.Add(GetTable(element));
+                return;
             }
 
-            return ds;
-        }
+            Dictionary<string, List<Element>> elementsWithUidNoDuplicates = GetElementsWithUidNoDuplicatesParams(elements);
 
-        private static DataTable GetTable(KeyValuePair<string, List<Element>> element)
-        {
-            var table = new DataTable { TableName = element.Key };
-
-            // table.Columns.Add("ID");
-            foreach (Element item in element.Value)
+            if (elementsWithUidNoDuplicates != null)
             {
-                DataRow row = table.NewRow();
+                DataSet ds = dataSet.GetDataSet(elementsWithUidNoDuplicates);
 
-                // row["ID"] = item.Id.IntegerValue.ToString();
-                foreach (Parameter parameter in item.GetOrderedParameters().Where(p => (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES) && p.IsShared))
+                string json = JsonConvert.SerializeObject(ds, Formatting.Indented);
+
+                sw.Stop();
+
+                if (ResultsHelper.WriteJsonFile(json))
                 {
-                    if (!table.Columns.Contains(parameter.GUID.ToString()))
-                    {
-                        table.Columns.Add(parameter.GUID.ToString());
-                    }
-
-                    row[parameter.GUID.ToString()] = parameter.GetStringParameterValue();
+                    TaskDialog.Show(
+                        "Parameter Export",
+                        $"{elementsWithUidNoDuplicates.Count} categories and a total of {elementsWithUidNoDuplicates.Values.Sum(list => list.Count)} elements exported in {sw.Elapsed.TotalSeconds:F2} seconds.");
                 }
-
-                table.Rows.Add(row);
             }
-
-            return table;
         }
 
-        // private static DataTable GetTable(KeyValuePair<string, List<Element>> element)
-        // {
-        //     var table = new DataTable { TableName = element.Key };
-        //
-        //     // table.Columns.Add("ID");
-        //     foreach (Element item in element.Value)
-        //     {
-        //         DataRow row = table.NewRow();
-        //
-        //         // row["ID"] = item.Id.IntegerValue.ToString();
-        //         foreach (Parameter parameter in item.GetOrderedParameters().Where(p => (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES) && p.IsShared))
-        //         {
-        //             if (!table.Columns.Contains(parameter.Definition.Name))
-        //             {
-        //                 table.Columns.Add(parameter.Definition.Name);
-        //             }
-        //
-        //             row[parameter.Definition.Name] = parameter.GetStringParameterValue();
-        //         }
-        //
-        //         table.Rows.Add(row);
-        //     }
-        //
-        //     return table;
-        // }
-        private static Dictionary<string, List<Element>> GetElements(Document doc)
+        private static Dictionary<string, List<Element>> GetElementsWithUidNoDuplicatesParams(IEnumerable<Element> elements)
         {
-            return new FilteredElementCollector(doc).WhereElementIsNotElementType()
-                .WhereElementIsViewIndependent()
-                .WherePasses(
-                    new ElementMulticategoryFilter(
-                        new List<BuiltInCategory>
-                        {
-                            BuiltInCategory.OST_PipeAccessory,
-                            BuiltInCategory.OST_PipeCurves,
-                            BuiltInCategory.OST_MechanicalEquipment,
-                            BuiltInCategory.OST_PipeFitting,
-                            BuiltInCategory.OST_FlexPipeCurves,
-                            BuiltInCategory.OST_PlumbingFixtures
-                        }))
-                .Where(e => e.Category != null)
-                .Where(
-                    delegate(Element e)
+            List<Element> enumerable = elements.ToList();
+            List<Element> elementsWithUid = GetElementsWithUid(enumerable).ToList();
+
+            if (elementsWithUid.Count != enumerable.Count)
+            {
+                throw new ArgumentException("Заполните у элементов параметр UID (параметр проекта)");
+            }
+
+            return elementsWithUid.Where(
+                    e =>
                     {
-                        Parameter volume = e.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED);
-
-                        if ((e is FamilyInstance fs && (fs.SuperComponent != null)) || ((volume != null) && !volume.HasValue))
-                        {
-                            return false;
-                        }
-
-                        return true;
+                        var hasDuplicate = e.GetOrderedParameters()
+                            .Where(par => par.IsShared)
+                            .Select(i => new { Name = i.Definition.Name, GUID = i.GUID })
+                            .GroupBy(i => i.Name, i => i.GUID)
+                            .Any(i => i.Select(guid => guid).Count() > 1);
+                        return !hasDuplicate;
                     })
                 .GroupBy(e => e.Category.Name, e => e)
                 .ToDictionary(e => e.Key, e => e.ToList());
+        }
+
+        private static IEnumerable<Element> GetElementsWithUid(IEnumerable<Element> elements)
+        {
+            return elements.Where(
+                e =>
+                {
+                    if (e.ParametersMap.Contains("UID"))
+                    {
+                        Parameter p = e.ParametersMap.get_Item("UID");
+                        return p.HasValue && !string.IsNullOrEmpty(p.AsString());
+                    }
+
+                    return false;
+                });
         }
     }
 }

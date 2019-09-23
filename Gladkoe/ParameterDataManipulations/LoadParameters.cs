@@ -1,4 +1,6 @@
-﻿using System;
+﻿#region Namespaces
+
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
@@ -15,10 +17,15 @@ using Newtonsoft.Json;
 
 // ReSharper disable StyleCop.SA1108
 //// ReSharper disable StyleCop.SA1512
-// ReSharper disable StyleCop.SA1515
+// ReSharper disable StyleCop.SA1515 
+#endregion
+
 namespace Gladkoe.ParameterDataManipulations
 {
-    using System.Windows.Forms;
+    using System.Windows;
+
+    using Gladkoe.ParameterDataManipulations.Interfaces;
+    using Gladkoe.ParameterDataManipulations.Models;
 
     using Application = Autodesk.Revit.ApplicationServices.Application;
 
@@ -26,55 +33,79 @@ namespace Gladkoe.ParameterDataManipulations
     [Regeneration(RegenerationOption.Manual)]
     public class LoadParameters : IExternalCommand
     {
+        private static IGetRevitDataStrategy revitData;
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Application app = uiapp.Application;
             Document doc = uidoc.Document;
+
+            revitData = new ParamManipulGetRvtData();
+            try
             {
-                // try
-                DeserializeFromJson2(doc);
+                Deserialize(doc);
             }
+            catch (Exception e)
             {
-                // catch (Exception e)
-                // TaskDialog.Show("Fill parameters", e.Message);
+                TaskDialog.Show("Load parameters", e.Message);
             }
 
             return Result.Succeeded;
         }
 
-        private static void DeserializeFromJson(Document doc)
+        private static void Deserialize(Document doc)
         {
+            string jsonFilePath = ResultsHelper.GetOpenJsonFilePath();
+
+            if (jsonFilePath == null)
+            {
+                return;
+            }
+
             var sw = Stopwatch.StartNew();
 
-            var elements = GetElements(doc)
-                .Where(e => e.LookupParameter("UID") != null)
-                .GroupBy(e => e.LookupParameter("UID").AsString(), e => e)
-                .ToDictionary(e => e.Key, e => e.FirstOrDefault());
+            List<Element> elements = revitData.GetElements(doc).ToList();
 
-            DataSet dataSet = JsonConvert.DeserializeObject<DataSet>(File.ReadAllText(ResultsHelper.GetOpenJsonFilePath()));
+            if (DuplicateValidator.ValidateDuplicates(elements))
+            {
+                return;
+            }
 
+            DataSet dataSet = JsonConvert.DeserializeObject<DataSet>(File.ReadAllText(jsonFilePath));
+
+            var (parametersCount, elementsCount) = SetParameterValuesFromDataSet(doc, dataSet, elements);
+
+            sw.Stop();
+
+            if (parametersCount != 0)
+            {
+                TaskDialog.Show("Parameter Export", $"{parametersCount} parameters and a total of {elementsCount} elements proceed in {sw.Elapsed.TotalSeconds:F2} seconds.");
+            }
+        }
+
+        private static (int parametersCount, int elementsCount) SetParameterValuesFromDataSet(Document doc, DataSet dataSet, List<Element> elements)
+        {
+            Dictionary<int, List<Parameter>> elementParameters = GetElementParameters(elements);
+
+            int count = 0;
             if (dataSet != null)
             {
-                var groupedByIdData = dataSet.Tables.Cast<DataTable>()
-                    .SelectMany(e => e.AsEnumerable())
-                    .GroupBy(p => p.Field<string>("f776cdec-f4d6-491d-a342-ef50f8f09d4e"))
-                    .ToDictionary(r => r.Key, r => r.SelectMany(p => p.Table.Columns.Cast<DataColumn>().Select(c => new { Name = c.ColumnName, ParamValue = p[c] })));
+                var groupedByIdData = GetParameterDataFromDataSet(dataSet);
 
-                using (Transaction tran = new Transaction(doc))
+                using (var tran = new Transaction(doc))
                 {
                     tran.Start("Перенос параметров из JSON");
-                    foreach (var element in elements)
+
+                    foreach (var element in elementParameters)
                     {
-                        foreach (var parameter in element.Value.GetOrderedParameters().Where(p => !p.IsReadOnly && (p.StorageType != StorageType.ElementId) && p.IsShared))
+                        foreach (var parameter in element.Value)
                         {
-                            foreach (var paramData in groupedByIdData[element.Key])
+                            foreach (var paramData in groupedByIdData[element.Key].Where(paramData => parameter.GUID.ToString().Equals(paramData.ParamName)))
                             {
-                                if (parameter.GUID.ToString().Equals(paramData.Name))
-                                {
-                                    parameter.SetObjectParameterValue(paramData.ParamValue);
-                                }
+                                parameter.SetObjectParameterValue(paramData.ParamValue);
+                                count++;
                             }
                         }
                     }
@@ -83,90 +114,42 @@ namespace Gladkoe.ParameterDataManipulations
                 }
             }
 
-            sw.Stop();
-
-            // if ()
-            // {
-            // TaskDialog.Show(
-            // "Parameter Export",
-            // $"{elements.Count} categories and a total of {elements.Values.Sum(list => list.Count)} elements exported in {sw.Elapsed.TotalSeconds:F2} seconds.");
-            // }
+            return (count, elementParameters.Count);
         }
 
-        private static void DeserializeFromJson2(Document doc)
+        private static Dictionary<int, List<(string ParamName, object ParamValue)>> GetParameterDataFromDataSet(DataSet dataSet)
         {
-            var elements = GetElements(doc)
-                .Where(e => e.LookupParameter("UID") != null)
-                .SelectMany(e => e.GetOrderedParameters(), (element, parameter) => (element, parameter))
-                .Where(p => p.parameter.IsShared)
-                .Select(i => new { GUID = i.parameter.GUID.ToString(), UID = i.element.LookupParameter("UID").AsString().ToInt32(), Parameter = i.parameter })
-                .OrderBy(i => i.UID)
-                .GroupBy(i => i.UID, arg => (GUID: arg.GUID, Parameter: arg.Parameter)).ToDictionary();
-
-            DataSet dataSet = JsonConvert.DeserializeObject<DataSet>(File.ReadAllText(ResultsHelper.GetOpenJsonFilePath()));
-
-            var groupedByIdData = dataSet.Tables.Cast<DataTable>()
+            return dataSet.Tables.Cast<DataTable>()
                 .SelectMany(e => e.AsEnumerable())
-                .GroupBy(p => p.Field<string>("f776cdec-f4d6-491d-a342-ef50f8f09d4e").ToInt32()).OrderBy(i => i.Key)
-                .ToDictionary(r => r.Key, r => r.SelectMany(p => p.Table.Columns.Cast<DataColumn>().Select(c => new { Name = c.ColumnName, ParamValue = p[c] })));
-
-            var groupedByIdData2 = dataSet.Tables.Cast<DataTable>()
-                .SelectMany(e => e.AsEnumerable())
-                .SelectMany(
-                    p => p.Table.Columns.Cast<DataColumn>()
-                        .Select(c => new { Name = c.ColumnName, ParamValue = p[c], GUID = p.Field<string>("f776cdec-f4d6-491d-a342-ef50f8f09d4e") }))
-                .GroupBy(p => p.Name, (p) => (GUID: p.GUID, ParamVal: p.ParamValue))
-                .ToDictionary(e => e.Key, e => e.ToList());
-
-            using (Transaction tran = new Transaction(doc))
-            {
-                tran.Start("Перенос параметров из JSON");
-                {
-                    foreach (var element in elements)
+                .Select(
+                    p => new
                     {
-                        var p = groupedByIdData[element.Key];
-
-                        foreach (var VARIABLE in groupedByIdData[element.Key])
-                        {
-                            
-                        }
-                    }
-                }
-
-                tran.Commit();
-            }
-        }
-
-        private static List<Element> GetElements(Document doc)
-        {
-            return new FilteredElementCollector(doc).WhereElementIsNotElementType()
-                .WhereElementIsViewIndependent()
-                .WherePasses(
-                    new ElementMulticategoryFilter(
-                        new List<BuiltInCategory>
-                        {
-                            BuiltInCategory.OST_PipeAccessory,
-                            BuiltInCategory.OST_PipeCurves,
-                            BuiltInCategory.OST_MechanicalEquipment,
-                            BuiltInCategory.OST_PipeFitting,
-                            BuiltInCategory.OST_FlexPipeCurves,
-                            BuiltInCategory.OST_PlumbingFixtures
-                        }))
-                .Where(e => e.Category != null)
-                .Where(
-                    delegate (Element e)
-                    {
-                        Parameter volume = e.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED);
-
-                        if ((e is FamilyInstance fs && (fs.SuperComponent != null)) || ((volume != null) && !volume.HasValue))
-                        {
-                            return false;
-                        }
-
-                        return true;
+                        UID = p.Field<string>("f776cdec-f4d6-491d-a342-ef50f8f09d4e").ToInt32(),
+                        ParamData = p.Table.Columns.Cast<DataColumn>().Select(c => (ParamName: c.ColumnName, ParamValue: p[c]))
                     })
-                .Where(e => e.GetOrderedParameters().FirstOrDefault(p => p.Definition.Name.Equals("UID")) != null)
-                .ToList();
+                .GroupBy(p => p.UID, p => p.ParamData)
+                .OrderBy(i => i.Key)
+                .ToDictionary(r => r.Key, r => r.SelectMany(p => p).ToList());
+        }
+
+        private static Dictionary<int, List<Parameter>> GetElementParameters(IEnumerable<Element> elements)
+        {
+            return elements.Where(
+                    e =>
+                    {
+                        if (e.ParametersMap.Contains("UID"))
+                        {
+                            Parameter p = e.ParametersMap.get_Item("UID");
+                            return p.HasValue && !string.IsNullOrEmpty(p.AsString());
+                        }
+
+                        return false;
+                    })
+                .GroupBy(e => e.LookupParameter("UID").AsString().ToInt32(), e => e)
+                .OrderBy(i => i.Key)
+                .ToDictionary(
+                    e => e.Key,
+                    e => e.FirstOrDefault()?.ParametersMap.Cast<Parameter>().Where(p => !p.IsReadOnly && (p.StorageType != StorageType.ElementId) && p.IsShared).ToList());
         }
     }
 }

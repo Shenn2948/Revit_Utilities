@@ -1,11 +1,11 @@
-﻿namespace Gladkoe.Utilities
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using Autodesk.Revit.DB;
+
+namespace Gladkoe.Utilities
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-
-    using Autodesk.Revit.DB;
-
     public static class ParameterHelper
     {
         public static string GetStringParameterValue(this Parameter param)
