@@ -65,6 +65,7 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ParameterDataManipulations\DeleteFamilyParameters.cs" />
     <Compile Include="ParameterDataManipulations\DeleteDuplicateParameters.cs" />
     <Compile Include="ParameterDataManipulations\DuplicateValidator.cs" />
     <Compile Include="ParameterDataManipulations\FillParameters.cs" />
