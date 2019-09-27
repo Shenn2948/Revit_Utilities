@@ -8,17 +8,14 @@ using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 
+using Gladkoe.ParameterDataManipulations.Interfaces;
+using Gladkoe.ParameterDataManipulations.Models;
 using Gladkoe.Utilities;
 
 using Newtonsoft.Json;
 
 namespace Gladkoe.ParameterDataManipulations
 {
-    using System.Windows;
-
-    using Gladkoe.ParameterDataManipulations.Interfaces;
-    using Gladkoe.ParameterDataManipulations.Models;
-
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     public class SaveParameters : IExternalCommand
