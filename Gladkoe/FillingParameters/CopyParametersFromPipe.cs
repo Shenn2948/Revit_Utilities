@@ -35,8 +35,7 @@
 
         private static List<FamilyInstance> GetWelds(Document doc)
         {
-            return new FilteredElementCollector(doc)
-                .WhereElementIsNotElementType()
+            return new FilteredElementCollector(doc).WhereElementIsNotElementType()
                 .WhereElementIsViewIndependent()
                 .OfCategory(BuiltInCategory.OST_PipeFitting)
                 .OfClass(typeof(FamilyInstance))
@@ -47,24 +46,18 @@
 
         private static IEnumerable<FamilyInstance> GetPipeParameters(IEnumerable<FamilyInstance> welds)
         {
-            var query = welds.SelectMany(e => e.MEPModel.ConnectorManager.Connectors.Cast<Connector>(), (weld, connector) => new { weld, connector })
+            var query = welds.SelectMany(e => e.MEPModel.ConnectorManager.Connectors.Cast<Connector>(), (weld, connector) => (weld, connector))
                 .SelectMany(t => t.connector.AllRefs.Cast<Connector>(), (tuple, reference) => new { tuple, reference })
                 .GroupBy(w => w.tuple.weld, arg => arg.reference.Owner)
                 .ToDictionary(
                     e => e.Key,
-                    elements => elements.Select(
-                        i => new
-                             {
-                                 PipeParameters = i.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves ? i.GetOrderedParameters() : null,
-                                 Fitings = i.Category.Id.IntegerValue != (int)BuiltInCategory.OST_PipeCurves ? i : null
-                             }));
+                    elements => (elements.Where(i => i.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves).Select(p => p.GetOrderedParameters()).FirstOrDefault(),
+                                    elements.Where(i => i.Category.Id.IntegerValue != (int)BuiltInCategory.OST_PipeCurves).Select(p => p).FirstOrDefault()));
 
-
-                // .Where(t => t.reference.Owner.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves)
-                // .Select(t => t.tuple.weld);
-
+            // elements => elements.Select(
+            // i => (PipeParameters: i.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves ? i.GetOrderedParameters() : null,
+            // Fitings: i.Category.Id.IntegerValue != (int)BuiltInCategory.OST_PipeCurves ? i : null)));
             return null;
         }
-
     }
 }
