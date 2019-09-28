@@ -90,37 +90,31 @@
 
                 if (element is Pipe pipe)
                 {
-                    Parameter p1 = pipe.GetOrderedParameters()
-                        .Where(p => !p.IsShared && (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_GEOMETRY))
-                        .FirstOrDefault(p => p.Definition.Name.Equals("Длина"));
-                    resultParameter = pipe.GetOrderedParameters()
+                    Dictionary<string, Parameter> pipeResultParameters = pipe.ParametersMap.Cast<Parameter>()
                         .Where(p => p.IsShared && (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES))
-                        .FirstOrDefault(p => p.Definition.Name.Equals("Длина"));
-                    if (p1 != null)
+                        .GroupBy(p => p.Definition.Name, p => p)
+                        .ToDictionary(p => p.Key, p => p.FirstOrDefault());
+
+                    Dictionary<string, Parameter> pipeParameters = pipe.GetOrderedParameters()
+                        .Where(
+                            p => !p.IsShared
+                                 && ((p.Definition.ParameterGroup == BuiltInParameterGroup.PG_GEOMETRY) || (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_MECHANICAL)))
+                        .GroupBy(p => p.Definition.Name, p => p)
+                        .ToDictionary(p => p.Key, p => p.FirstOrDefault());
+
+                    if (pipeParameters.ContainsKey("Длина"))
                     {
-                        resultParameter?.Set(p1.AsDouble());
+                        pipeResultParameters["Длина"]?.Set(pipeParameters["Длина"].AsDouble());
                     }
 
-                    p1 = pipe.GetOrderedParameters()
-                        .Where(p => !p.IsShared && (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_GEOMETRY))
-                        .FirstOrDefault(p => p.Definition.Name.Equals("Внешний диаметр"));
-                    resultParameter = pipe.GetOrderedParameters()
-                        .Where(p => p.IsShared && (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES))
-                        .FirstOrDefault(p => p.Definition.Name.Equals("Наружный диаметр"));
-                    if (p1 != null)
+                    if (pipeParameters.ContainsKey("Внешний диаметр"))
                     {
-                        resultParameter?.Set(p1.AsDouble());
+                        pipeResultParameters["Наружный диаметр"]?.Set(pipeParameters["Внешний диаметр"].AsDouble());
                     }
 
-                    p1 = pipe.GetOrderedParameters()
-                        .Where(p => !p.IsShared && (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_MECHANICAL))
-                        .FirstOrDefault(p => p.Definition.Name.Equals("Диаметр"));
-                    resultParameter = pipe.GetOrderedParameters()
-                        .Where(p => p.IsShared && (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES))
-                        .FirstOrDefault(p => p.Definition.Name.Equals("Условный диаметр"));
-                    if (p1 != null)
+                    if (pipeParameters.ContainsKey("Диаметр"))
                     {
-                        resultParameter?.Set(p1.AsDouble());
+                        pipeResultParameters["Условный диаметр"]?.Set(pipeParameters["Диаметр"].AsDouble());
                     }
                 }
 

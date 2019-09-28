@@ -1,9 +1,11 @@
 ﻿namespace Gladkoe.FillingParameters
 {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Linq;
+    using System.Threading.Tasks;
 
     using Autodesk.Revit.ApplicationServices;
     using Autodesk.Revit.Attributes;
@@ -19,18 +21,103 @@
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
-
-            try
             {
-                var welds = GetWelds(doc);
-                var parameters = GetPipeParameters(welds);
+                // try
+                FillParametersAction(doc);
             }
-            catch (Exception e)
             {
-                TaskDialog.Show("Recolor", e.Message);
+                // catch (Exception e)
+                // TaskDialog.Show("Recolor", e.Message);
             }
 
             return Result.Succeeded;
+        }
+
+        private static void FillParametersAction(Document doc)
+        {
+            var sw = Stopwatch.StartNew();
+
+            using (Transaction tran = new Transaction(doc))
+            {
+                tran.Start("Скопировать параметры из труб в коннекторы и арматуру");
+                SetParameters(doc);
+                tran.Commit();
+            }
+
+            sw.Stop();
+
+            TaskDialog.Show("Заполнение параметров", $"Параметры заполнены " + $"за {sw.Elapsed.TotalSeconds:F2} секунд.");
+        }
+
+        private static void SetParameters(Document doc)
+        {
+            var welds = GetWelds(doc);
+            var elements = GetWeldsData(welds);
+
+            foreach (KeyValuePair<FamilyInstance, (Element, Element)> weld in elements)
+            {
+                Dictionary<string, Parameter> pipeParameters = weld.Value.Item1?.ParametersMap.Cast<Parameter>()
+                    .Where(p => p.IsShared && (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES))
+                    .GroupBy(p => p.Definition.Name, p => p)
+                    .OrderBy(p => p.Key)
+                    .ToDictionary(p => p.Key, p => p.FirstOrDefault());
+
+                Dictionary<string, Parameter> weldResultParameters = weld.Key.ParametersMap.Cast<Parameter>()
+                    .Where(p => p.IsShared && (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES) && !p.IsReadOnly)
+                    .GroupBy(p => p.Definition.Name, p => p)
+                    .OrderBy(p => p.Key)
+                    .ToDictionary(p => p.Key, p => p.FirstOrDefault());
+
+                Dictionary<string, Parameter> fitingResultParameters = weld.Value.Item2?.ParametersMap.Cast<Parameter>()
+                    .Where(p => p.IsShared && (p.Definition.ParameterGroup == BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES) && !p.IsReadOnly)
+                    .GroupBy(p => p.Definition.Name, p => p)
+                    .OrderBy(p => p.Key)
+                    .ToDictionary(p => p.Key, p => p.FirstOrDefault());
+
+                // if ((pipeParameters != null) && pipeParameters.ContainsKey("Давление рабочее"))
+                // {
+                //     if (weldResultParameters.ContainsKey("Давление"))
+                //     {
+                //         weldResultParameters["Давление"].Set(pipeParameters["Давление рабочее"].AsDouble());
+                //     }
+                //
+                //     if ((fitingResultParameters != null) && fitingResultParameters.ContainsKey("Давление"))
+                //     {
+                //         fitingResultParameters["Давление"].Set(pipeParameters["Давление рабочее"].AsDouble());
+                //     }
+                // }
+
+                SetValue(pipeParameters, weldResultParameters, fitingResultParameters, "Давление рабочее", "Давление");
+                SetValue(pipeParameters, weldResultParameters, fitingResultParameters, "Давление гидравлич. испытания на прочн.", "Давление гидравлич. испытания на прочн.");
+                SetValue(pipeParameters, weldResultParameters, fitingResultParameters, "Давление доп. пневмоиспытания на герм.", "Давление доп. пневмоиспытания на герм.");
+                SetValue(pipeParameters, weldResultParameters, fitingResultParameters, "Давление испытательное", "Давление испытательное");
+                SetValue(pipeParameters, weldResultParameters, fitingResultParameters, "Давление рабочее", "Давление рабочее");
+                SetValue(pipeParameters, weldResultParameters, fitingResultParameters, "Класс среды", "Класс среды");
+                SetValue(pipeParameters, weldResultParameters, fitingResultParameters, "Наименование продукта", "Наименование продукта");
+                SetValue(pipeParameters, weldResultParameters, fitingResultParameters, "Шифр продукта", "Шифр продукта");
+                SetValue(pipeParameters, weldResultParameters, fitingResultParameters, "Номер участка линии", "Номер участка линии");
+            }
+        }
+
+        private static void SetValue(
+            Dictionary<string, Parameter> pipeParameters,
+            Dictionary<string, Parameter> weldResultParameters,
+            Dictionary<string, Parameter> fitingResultParameters,
+            string from,
+            string to)
+        {
+            if ((pipeParameters != null) && pipeParameters.ContainsKey(from))
+            {
+                if (weldResultParameters.ContainsKey(to))
+                {
+                    weldResultParameters[to].Set(pipeParameters[from].AsDouble());
+                }
+
+                if ((fitingResultParameters != null) && fitingResultParameters.ContainsKey(to))
+                {
+                    fitingResultParameters[to].Set(pipeParameters[from].AsDouble());
+                }
+            }
         }
 
         private static List<FamilyInstance> GetWelds(Document doc)
@@ -44,20 +131,19 @@
                 .ToList();
         }
 
-        private static IEnumerable<FamilyInstance> GetPipeParameters(IEnumerable<FamilyInstance> welds)
+        private static Dictionary<FamilyInstance, (Element, Element)> GetWeldsData(IEnumerable<FamilyInstance> welds)
         {
-            var query = welds.SelectMany(e => e.MEPModel.ConnectorManager.Connectors.Cast<Connector>(), (weld, connector) => (weld, connector))
+            return welds.SelectMany(e => e.MEPModel.ConnectorManager.Connectors.Cast<Connector>(), (weld, connector) => (weld, connector))
                 .SelectMany(t => t.connector.AllRefs.Cast<Connector>(), (tuple, reference) => new { tuple, reference })
                 .GroupBy(w => w.tuple.weld, arg => arg.reference.Owner)
                 .ToDictionary(
                     e => e.Key,
-                    elements => (elements.Where(i => i.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves).Select(p => p.GetOrderedParameters()).FirstOrDefault(),
-                                    elements.Where(i => i.Category.Id.IntegerValue != (int)BuiltInCategory.OST_PipeCurves).Select(p => p).FirstOrDefault()));
+                    elements => (Pipe: elements.Where(i => i.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves).Select(p => p).FirstOrDefault(),
+                                    Fitings: elements.Where(i => i.Category.Id.IntegerValue != (int)BuiltInCategory.OST_PipeCurves).Select(p => p).FirstOrDefault()));
 
             // elements => elements.Select(
             // i => (PipeParameters: i.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves ? i.GetOrderedParameters() : null,
             // Fitings: i.Category.Id.IntegerValue != (int)BuiltInCategory.OST_PipeCurves ? i : null)));
-            return null;
         }
     }
 }
