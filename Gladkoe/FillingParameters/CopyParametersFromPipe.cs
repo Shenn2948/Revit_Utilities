@@ -23,13 +23,13 @@
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
+            try
             {
-                // try
                 FillParametersAction(doc);
             }
+            catch (Exception e)
             {
-                // catch (Exception e)
-                // TaskDialog.Show("Recolor", e.Message);
+                TaskDialog.Show("Recolor", e.Message);
             }
 
             return Result.Succeeded;
@@ -123,16 +123,19 @@
         private static Dictionary<FamilyInstance, (Element, Element)> GetWeldsData(IEnumerable<FamilyInstance> welds)
         {
             return welds.SelectMany(e => e.MEPModel.ConnectorManager.Connectors.Cast<Connector>(), (weld, connector) => (weld, connector))
-                .SelectMany(t => t.connector.AllRefs.Cast<Connector>(), (tuple, reference) => new { tuple, reference })
+                .SelectMany(
+                    t => t.connector.AllRefs.Cast<Connector>()
+                        .Where(
+                            r => (r.Owner.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeFitting)
+
+                                 // || (r.Owner.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeAccessory)
+                                 || (r.Owner.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves)),
+                    (tuple, reference) => new { tuple, reference })
                 .GroupBy(w => w.tuple.weld, arg => arg.reference.Owner)
                 .ToDictionary(
                     e => e.Key,
                     elements => (Pipe: elements.Where(i => i.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves).Select(p => p).FirstOrDefault(),
                                     Fitings: elements.Where(i => i.Category.Id.IntegerValue != (int)BuiltInCategory.OST_PipeCurves).Select(p => p).FirstOrDefault()));
-
-            // elements => elements.Select(
-            // i => (PipeParameters: i.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves ? i.GetOrderedParameters() : null,
-            // Fitings: i.Category.Id.IntegerValue != (int)BuiltInCategory.OST_PipeCurves ? i : null)));
         }
     }
 }
