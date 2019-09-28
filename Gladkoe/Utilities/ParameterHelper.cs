@@ -108,6 +108,34 @@ namespace Gladkoe.Utilities
             }
         }
 
+        public static void SetParameterValue(this Parameter param, Parameter fromParameter)
+        {
+            switch (param.StorageType)
+            {
+                case StorageType.Double:
+                    param.Set(fromParameter.AsDouble());
+                    break;
+
+                case StorageType.Integer:
+                    param.Set(fromParameter.AsInteger());
+                    break;
+
+                case StorageType.String:
+                    param.Set(fromParameter.AsString());
+                    break;
+
+                case StorageType.ElementId:
+                    param.Set(fromParameter.AsElementId());
+                    break;
+
+                case StorageType.None:
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
         public static Dictionary<TKey, List<TValue>> ToDictionary<TKey, TValue>(this IEnumerable<IGrouping<TKey, TValue>> groupings)
         {
             return groupings.ToDictionary(group => group.Key, group => group.ToList());

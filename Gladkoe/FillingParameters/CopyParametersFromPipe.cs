@@ -12,6 +12,8 @@
     using Autodesk.Revit.DB;
     using Autodesk.Revit.UI;
 
+    using Gladkoe.Utilities;
+
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     public class CopyParametersFromPipe : IExternalCommand
@@ -74,19 +76,6 @@
                     .OrderBy(p => p.Key)
                     .ToDictionary(p => p.Key, p => p.FirstOrDefault());
 
-                // if ((pipeParameters != null) && pipeParameters.ContainsKey("Давление рабочее"))
-                // {
-                //     if (weldResultParameters.ContainsKey("Давление"))
-                //     {
-                //         weldResultParameters["Давление"].Set(pipeParameters["Давление рабочее"].AsDouble());
-                //     }
-                //
-                //     if ((fitingResultParameters != null) && fitingResultParameters.ContainsKey("Давление"))
-                //     {
-                //         fitingResultParameters["Давление"].Set(pipeParameters["Давление рабочее"].AsDouble());
-                //     }
-                // }
-
                 SetValue(pipeParameters, weldResultParameters, fitingResultParameters, "Давление рабочее", "Давление");
                 SetValue(pipeParameters, weldResultParameters, fitingResultParameters, "Давление гидравлич. испытания на прочн.", "Давление гидравлич. испытания на прочн.");
                 SetValue(pipeParameters, weldResultParameters, fitingResultParameters, "Давление доп. пневмоиспытания на герм.", "Давление доп. пневмоиспытания на герм.");
@@ -110,12 +99,12 @@
             {
                 if (weldResultParameters.ContainsKey(to))
                 {
-                    weldResultParameters[to].Set(pipeParameters[from].AsDouble());
+                    weldResultParameters[to].SetParameterValue(pipeParameters[from]);
                 }
 
                 if ((fitingResultParameters != null) && fitingResultParameters.ContainsKey(to))
                 {
-                    fitingResultParameters[to].Set(pipeParameters[from].AsDouble());
+                    fitingResultParameters[to].SetParameterValue(pipeParameters[from]);
                 }
             }
         }
