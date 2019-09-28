@@ -26,22 +26,20 @@ namespace Gladkoe.Gladkoe_Recolor
         {
             var sw = Stopwatch.StartNew();
 
-            List<FamilyInstance> welds = GetWeld(doc) ?? throw new ArgumentNullException(
-                                             nameof(welds),
-                                             "Проблема в нахождении сварки, проверьте наименования семейств");
+            List<FamilyInstance> welds = GetWeld(doc) ?? throw new ArgumentException("Проблема в нахождении сварки, проверьте наименования семейств");
 
             using (Transaction tran = new Transaction(doc))
             {
                 tran.Start("Change");
 
-                ChangeColor(doc, welds, "Азот");
-                ChangeColor(doc, welds, "Вода");
-                ChangeColor(doc, welds, "Газ");
-                ChangeColor(doc, welds, "Дренаж");
-                ChangeColor(doc, welds, "Канализация");
-                ChangeColor(doc, welds, "Нефтепродукты");
-                ChangeColor(doc, welds, "Пенообразователь");
-                ChangeColor(doc, welds, "ХимическиеРеагенты");
+                ChangeColor(doc, welds, "Азот_");
+                ChangeColor(doc, welds, "Вода_");
+                ChangeColor(doc, welds, "Газ_");
+                ChangeColor(doc, welds, "Дренаж_");
+                ChangeColor(doc, welds, "Канализация_");
+                ChangeColor(doc, welds, "Нефтепродукты_");
+                ChangeColor(doc, welds, "Пенообразователь_");
+                ChangeColor(doc, welds, "ХимическиеРеагенты_");
 
                 tran.Commit();
             }
@@ -53,16 +51,10 @@ namespace Gladkoe.Gladkoe_Recolor
 
         private static void ChangeColor(Document doc, IEnumerable<FamilyInstance> welds, string pipeType)
         {
-            ElementId material = GetMaterialId(doc, pipeType) ?? throw new ArgumentNullException(
-                                     nameof(material),
-                                     "Проблема в нахождении материалов, проверьте наименования материалов");
+            ElementId material = GetMaterialId(doc, pipeType) ?? throw new ArgumentException("Проблема в нахождении материалов, проверьте наименования материалов");
 
-            IEnumerable<FamilyInstance> pipeTypes = GetPipeType(welds, pipeType) ?? throw new ArgumentNullException(
-                                                        nameof(pipeTypes),
-                                                        "Проблема в нахождении типов труб, проверьте наименования семейств");
-            IEnumerable<Element> connectorsToRecolor = GetElementsToRecolor(pipeTypes) ?? throw new ArgumentNullException(
-                                                           nameof(connectorsToRecolor),
-                                                           "Проблема в нахождении коннекторов, проверьте наименования семейств");
+            IEnumerable<FamilyInstance> pipeTypes = GetPipeType(welds, pipeType) ?? throw new ArgumentException("Проблема в нахождении типов труб, проверьте наименования семейств");
+            IEnumerable<Element> connectorsToRecolor = GetElementsToRecolor(pipeTypes) ?? throw new ArgumentException("Проблема в нахождении коннекторов, проверьте наименования семейств");
 
             SetColor(connectorsToRecolor, material);
         }
@@ -75,7 +67,7 @@ namespace Gladkoe.Gladkoe_Recolor
                 .OfCategory(BuiltInCategory.OST_PipeFitting)
                 .OfClass(typeof(FamilyInstance))
                 .Cast<FamilyInstance>()
-                .Where(i => i.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные") && i.Symbol.FamilyName.Equals("801_СварнойШов_ОБЩИЙ"))
+                .Where(i => i.Symbol.FamilyName.Equals("801_СварнойШов_ОБЩИЙ"))
                 .ToList();
         }
 
@@ -84,7 +76,7 @@ namespace Gladkoe.Gladkoe_Recolor
             return from e in welds
                    from Connector connector in e.MEPModel.ConnectorManager.Connectors
                    from Connector reference in connector.AllRefs
-                   where reference.Owner.Name.Contains(pipeType)
+                   where reference.Owner.Name.StartsWith(pipeType)
                    select e;
         }
 

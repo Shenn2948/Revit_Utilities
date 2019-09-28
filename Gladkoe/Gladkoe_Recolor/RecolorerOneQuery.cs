@@ -18,7 +18,6 @@ namespace Gladkoe.Gladkoe_Recolor
         {
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
-            Application app = uiapp.Application;
             Document doc = uidoc.Document;
 
             try
@@ -31,6 +30,82 @@ namespace Gladkoe.Gladkoe_Recolor
             }
 
             return Result.Succeeded;
+        }
+
+        private static void ChangeColorOneQuery(Document doc)
+        {
+            var sw = Stopwatch.StartNew();
+
+            Dictionary<string, List<FamilyInstance>> elements =
+                GetElements(doc) ?? throw new ArgumentNullException(nameof(elements), @"Проблема в нахождении коннекторов, проверьте наименования семейств");
+
+            int count;
+            using (Transaction tran = new Transaction(doc))
+            {
+                tran.Start("Change color");
+
+                count = ChangeColor(doc, elements, "Азот_")
+                        + ChangeColor(doc, elements, "Вода_")
+                        + ChangeColor(doc, elements, "Газ_")
+                        + ChangeColor(doc, elements, "Дренаж_")
+                        + ChangeColor(doc, elements, "Канализация_")
+                        + ChangeColor(doc, elements, "Нефтепродукты_")
+                        + ChangeColor(doc, elements, "Пенообразователь_")
+                        + ChangeColor(doc, elements, "ХимическиеРеагенты_");
+
+                tran.Commit();
+            }
+
+            sw.Stop();
+
+            TaskDialog.Show("Recolor", $"{count} elements proceed " + $"in {sw.Elapsed.TotalSeconds:F2} seconds.");
+        }
+
+        private static Dictionary<string, List<FamilyInstance>> GetElements(Document doc)
+        {
+            return new FilteredElementCollector(doc).WhereElementIsNotElementType()
+                .WhereElementIsViewIndependent()
+                .OfCategory(BuiltInCategory.OST_PipeFitting)
+                .OfClass(typeof(FamilyInstance))
+                .Cast<FamilyInstance>()
+                .Where(i => i.Symbol.FamilyName.Equals("801_СварнойШов_ОБЩИЙ"))
+                .SelectMany(e => e.MEPModel.ConnectorManager.Connectors.Cast<Connector>(), (e, connector) => (familyInstance: e, connector))
+                .SelectMany(t => t.connector.AllRefs.Cast<Connector>(), (familyInstance, reference) => (tuple: familyInstance, reference))
+                .Where(
+                    t => t.reference.Owner.Name.StartsWith("Азот_")
+                         || t.reference.Owner.Name.StartsWith("Вода_")
+                         || t.reference.Owner.Name.StartsWith("Газ_")
+                         || t.reference.Owner.Name.StartsWith("Дренаж_")
+                         || t.reference.Owner.Name.StartsWith("Канализация_")
+                         || t.reference.Owner.Name.StartsWith("Нефтепродукты_")
+                         || t.reference.Owner.Name.StartsWith("Пенообразователь_")
+                         || t.reference.Owner.Name.StartsWith("ХимическиеРеагенты_"))
+                .Select(t => (t.tuple.familyInstance, t.reference.Owner))
+                .SelectMany(e => e.familyInstance.MEPModel.ConnectorManager.Connectors.Cast<Connector>(), (e, connector) => (e.familyInstance, connector, e.Owner))
+                .SelectMany(t => t.connector.AllRefs.Cast<Connector>(), (t, reference) => (tuple: t, reference))
+                .Where(
+                    t => (t.reference.Owner.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeFitting)
+                         && !t.reference.Owner.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные"))
+                .GroupBy(e => e.tuple.Owner.Name, e => e.reference.Owner)
+                .ToDictionary(e => e.Key, e => e.Cast<FamilyInstance>().ToList());
+        }
+
+        private static int ChangeColor(Document doc, Dictionary<string, List<FamilyInstance>> elements, string pipeType)
+        {
+            int count = 0;
+
+            foreach (KeyValuePair<string, List<FamilyInstance>> valuePair in elements)
+            {
+                if (valuePair.Key.StartsWith(pipeType))
+                {
+                    ElementId material = GetMaterialId(doc, pipeType)
+                                         ?? throw new ArgumentNullException(nameof(material), @"Проблема в нахождении материалов, проверьте наименования материалов");
+                    SetColor(valuePair.Value, material);
+                    count += valuePair.Value.Count;
+                }
+            }
+
+            return count;
         }
 
         private static ElementId GetMaterialId(Document doc, string pipeType)
@@ -78,81 +153,6 @@ namespace Gladkoe.Gladkoe_Recolor
                     }
                 }
             }
-        }
-
-        private static Dictionary<string, List<FamilyInstance>> GetElements(Document doc)
-        {
-            return new FilteredElementCollector(doc).WhereElementIsNotElementType()
-                .WhereElementIsViewIndependent()
-                .OfCategory(BuiltInCategory.OST_PipeFitting)
-                .OfClass(typeof(FamilyInstance))
-                .Cast<FamilyInstance>()
-                .Where(i => i.Symbol.FamilyName.Equals("801_СварнойШов_ОБЩИЙ"))
-                .SelectMany(e => e.MEPModel.ConnectorManager.Connectors.Cast<Connector>(), (e, connector) => (familyInstance: e, connector))
-                .SelectMany(t => t.connector.AllRefs.Cast<Connector>(), (familyInstance, reference) => (tuple: familyInstance, reference))
-                .Where(
-                    t => t.reference.Owner.Name.StartsWith("Азот_")
-                         || t.reference.Owner.Name.StartsWith("Вода_")
-                         || t.reference.Owner.Name.StartsWith("Газ_")
-                         || t.reference.Owner.Name.StartsWith("Дренаж_")
-                         || t.reference.Owner.Name.StartsWith("Канализация_")
-                         || t.reference.Owner.Name.StartsWith("Нефтепродукты_")
-                         || t.reference.Owner.Name.StartsWith("Пенообразователь_")
-                         || t.reference.Owner.Name.StartsWith("ХимическиеРеагенты_"))
-                .Select(t => (t.tuple.familyInstance, t.reference.Owner))
-                .SelectMany(e => e.familyInstance.MEPModel.ConnectorManager.Connectors.Cast<Connector>(), (e, connector) => (e.familyInstance, connector, e.Owner))
-                .SelectMany(t => t.connector.AllRefs.Cast<Connector>(), (t, reference) => (tuple: t, reference))
-                .Where(
-                    t => (t.reference.Owner.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeFitting)
-                         && !t.reference.Owner.Name.Equals("ГОСТ 10704-91 Трубы стальные электросварные прямошовные"))
-                .GroupBy(e => e.tuple.Owner.Name, e => e.reference.Owner)
-                .ToDictionary(e => e.Key, e => e.Cast<FamilyInstance>().ToList());
-        }
-
-        private static int ChangeColor(Document doc, Dictionary<string, List<FamilyInstance>> elements, string pipeType)
-        {
-            int count = 0;
-
-            foreach (KeyValuePair<string, List<FamilyInstance>> valuePair in elements)
-            {
-                if (valuePair.Key.StartsWith(pipeType))
-                {
-                    ElementId material = GetMaterialId(doc, pipeType)
-                                         ?? throw new ArgumentNullException(nameof(material), "Проблема в нахождении материалов, проверьте наименования материалов");
-                    SetColor(valuePair.Value, material);
-                    count += valuePair.Value.Count;
-                }
-            }
-
-            return count;
-        }
-
-        private static void ChangeColorOneQuery(Document doc)
-        {
-            var sw = Stopwatch.StartNew();
-
-            Dictionary<string, List<FamilyInstance>> elements =
-                GetElements(doc) ?? throw new ArgumentNullException(nameof(elements), "Проблема в нахождении коннекторов, проверьте наименования семейств");
-            int count;
-            using (Transaction tran = new Transaction(doc))
-            {
-                tran.Start("Change color");
-
-                count = ChangeColor(doc, elements, "Азот_")
-                        + ChangeColor(doc, elements, "Вода_")
-                        + ChangeColor(doc, elements, "Газ_")
-                        + ChangeColor(doc, elements, "Дренаж_")
-                        + ChangeColor(doc, elements, "Канализация_")
-                        + ChangeColor(doc, elements, "Нефтепродукты_")
-                        + ChangeColor(doc, elements, "Пенообразователь_")
-                        + ChangeColor(doc, elements, "ХимическиеРеагенты_");
-
-                tran.Commit();
-            }
-
-            sw.Stop();
-
-            TaskDialog.Show("Recolor", $"{count} elements proceed " + $"in {sw.Elapsed.TotalSeconds:F2} seconds.");
         }
     }
 }

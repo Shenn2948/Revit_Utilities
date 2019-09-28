@@ -65,6 +65,8 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FillingParameters\CopyParametersFromPipe.cs" />
+    <Compile Include="Gladkoe_Recolor\Models\RecolorerGetRvtData.cs" />
     <Compile Include="ParameterDataManipulations\DeleteFamilyParameters.cs" />
     <Compile Include="ParameterDataManipulations\DeleteDuplicateParameters.cs" />
     <Compile Include="ParameterDataManipulations\DuplicateValidator.cs" />

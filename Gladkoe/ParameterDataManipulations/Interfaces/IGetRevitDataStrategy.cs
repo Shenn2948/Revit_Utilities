@@ -6,6 +6,6 @@
 
     public interface IGetRevitDataStrategy
     {
-        IEnumerable<Element> GetElements(Document doc);
+         IEnumerable<Element> GetElements(Document doc);
     }
 }
