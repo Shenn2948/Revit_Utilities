@@ -13,8 +13,8 @@
     <ProjectGuid>{7E5C1081-736C-43E0-B70E-3B84D318D1B4}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Gladkoe</RootNamespace>
-    <AssemblyName>Gladkoe</AssemblyName>
+    <RootNamespace>RevitUtils.Geometry</RootNamespace>
+    <AssemblyName>RevitUtils.Geometry</AssemblyName>
     <TargetFrameworkVersion>v4.7</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -42,6 +42,9 @@
     <StartProgram>$(ProgramW6432)\Autodesk\Revit 2019\Revit.exe</StartProgram>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="AdWindows">
+      <HintPath>C:\Program Files\Autodesk\Revit 2019\AdWindows.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.12.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -59,47 +62,25 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.ServiceModel" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml" />
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="FillingParameters\CopyParametersFromPipe.cs" />
-    <Compile Include="Gladkoe_Recolor\Models\RecolorerGetRvtData.cs" />
-    <Compile Include="ParameterDataManipulations\DeleteFamilyParameters.cs" />
-    <Compile Include="ParameterDataManipulations\DeleteDuplicateParameters.cs" />
-    <Compile Include="ParameterDataManipulations\DuplicateValidator.cs" />
-    <Compile Include="ParameterDataManipulations\FillParameters.cs" />
-    <Compile Include="LineSectionNumberFillParameter\LineSectionNumberFillParameter.cs" />
-    <Compile Include="LevelMarkFillParameter.cs" />
-    <Compile Include="EndConditionFillParameter.cs" />
-    <Compile Include="LineSectionNumberFillParameter\ResultWindow.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="LineSectionNumberFillParameter\ResultWindow.Designer.cs">
-      <DependentUpon>ResultWindow.cs</DependentUpon>
-    </Compile>
-    <Compile Include="ParameterDataManipulations\Interfaces\IGetDataSetStrategy.cs" />
-    <Compile Include="ParameterDataManipulations\Interfaces\IGetRevitDataStrategy.cs" />
-    <Compile Include="ParameterDataManipulations\LoadParameters.cs" />
-    <Compile Include="ParameterDataManipulations\Models\ParamManipulGetDataSet.cs" />
-    <Compile Include="ParameterDataManipulations\Models\ParamManipulGetRvtData.cs" />
-    <Compile Include="ParameterDataManipulations\SaveParameters.cs" />
-    <Compile Include="ParameterDataManipulations\Views\DuplicatesWindow.xaml.cs">
-      <DependentUpon>DuplicatesWindow.xaml</DependentUpon>
+    <Compile Include="NavisGeometryListener\Command.cs" />
+    <Compile Include="NavisGeometryListener\Server\Entities\DataReceivedEventArgs.cs" />
+    <Compile Include="NavisGeometryListener\Server\Entities\IIpcClient.cs" />
+    <Compile Include="NavisGeometryListener\Server\Entities\IIpcServer.cs" />
+    <Compile Include="NavisGeometryListener\Server\WcfServer.cs" />
+    <Compile Include="NavisGeometryListener\Views\ServerView.xaml.cs">
+      <DependentUpon>ServerView.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Utilities\ElementsOfClassSelectionFilter.cs" />
-    <Compile Include="Utilities\ParameterHelper.cs" />
-    <Compile Include="Utilities\LabUtils.cs" />
-    <Compile Include="Gladkoe_Recolor\RecolorerOneQuery.cs" />
-    <Compile Include="Gladkoe_Recolor\Recolorer.cs" />
-    <Compile Include="Utilities\ResultsHelper.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="Settings.StyleCop" />
   </ItemGroup>
   <ItemGroup>
     <COMReference Include="Microsoft.Office.Core">
@@ -131,13 +112,13 @@
     </COMReference>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="LineSectionNumberFillParameter\ResultWindow.resx">
-      <DependentUpon>ResultWindow.cs</DependentUpon>
-    </EmbeddedResource>
+    <ProjectReference Include="..\RevitUtils.DataAccess\RevitUtils.DataAccess.csproj">
+      <Project>{b2f32ff1-ae30-4c54-bfb8-3e448dc3ce0d}</Project>
+      <Name>RevitUtils.DataAccess</Name>
+    </ProjectReference>
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
-    <Page Include="ParameterDataManipulations\Views\DuplicatesWindow.xaml">
+    <Page Include="NavisGeometryListener\Views\ServerView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

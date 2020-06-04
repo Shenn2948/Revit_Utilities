@@ -1,16 +1,15 @@
-namespace Gladkoe.Utilities
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Windows.Forms;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Selection;
+
+namespace RevitUtils.DataAccess.Utils
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.IO;
-    using System.Linq;
-    using System.Windows.Forms;
-
-    using Autodesk.Revit.DB;
-    using Autodesk.Revit.UI;
-    using Autodesk.Revit.UI.Selection;
-
     using Application = Autodesk.Revit.ApplicationServices.Application;
 
     /// <summary>
@@ -196,7 +195,7 @@ namespace Gladkoe.Utilities
         /// The type.
         /// </param>
         /// <returns>
-        /// The <see cref="Element"/>.
+        /// The <see cref="Autodesk.Revit.DB.Element"/>.
         /// </returns>
         public static Element GetSingleSelectedElementOrPrompt(UIDocument uidoc, Type type)
         {

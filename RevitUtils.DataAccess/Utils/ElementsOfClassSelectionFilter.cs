@@ -1,8 +1,8 @@
-﻿namespace Gladkoe.Utilities
-{
-    using Autodesk.Revit.DB;
-    using Autodesk.Revit.UI.Selection;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI.Selection;
 
+namespace RevitUtils.DataAccess.Utils
+{
     /// <summary>
     /// Allow selection of elements of type T only.
     /// </summary>
