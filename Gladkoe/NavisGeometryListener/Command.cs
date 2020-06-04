@@ -1,17 +1,14 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Windows.Interop;
-using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Windows;
-using Gladkoe.NavisGeometryListener.Server;
-using Gladkoe.NavisGeometryListener.Views;
 using RevitUtils.DataAccess.Entities.Handlers;
 using RevitUtils.DataAccess.Extensions;
+using RevitUtils.Geometry.NavisGeometryListener.Views;
 
-namespace Gladkoe.NavisGeometryListener
+namespace RevitUtils.Geometry.NavisGeometryListener
 {
     [Transaction(TransactionMode.Manual)]
     public class Command : IExternalCommand

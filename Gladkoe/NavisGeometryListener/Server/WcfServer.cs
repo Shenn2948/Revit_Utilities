@@ -1,8 +1,8 @@
 ﻿using System;
 using System.ServiceModel;
-using Gladkoe.NavisGeometryListener.Server.Entities;
+using RevitUtils.Geometry.NavisGeometryListener.Server.Entities;
 
-namespace Gladkoe.NavisGeometryListener.Server
+namespace RevitUtils.Geometry.NavisGeometryListener.Server
 {
     public sealed class WcfServer : IIpcServer
     {

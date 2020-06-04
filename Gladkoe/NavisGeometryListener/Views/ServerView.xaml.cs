@@ -1,21 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using Gladkoe.NavisGeometryListener.Server;
-using Gladkoe.NavisGeometryListener.Server.Entities;
+using RevitUtils.Geometry.NavisGeometryListener.Server;
+using RevitUtils.Geometry.NavisGeometryListener.Server.Entities;
 
-namespace Gladkoe.NavisGeometryListener.Views
+namespace RevitUtils.Geometry.NavisGeometryListener.Views
 {
     /// <summary>
     /// Interaction logic for ServerView.xaml
@@ -26,6 +14,8 @@ namespace Gladkoe.NavisGeometryListener.Views
 
         public ServerView()
         {
+            InitializeComponent();
+
             _server = new WcfServer();
             _server.Received += ServerOnReceived;
         }

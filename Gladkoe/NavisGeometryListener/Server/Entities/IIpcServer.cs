@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Gladkoe.NavisGeometryListener.Server.Entities
+namespace RevitUtils.Geometry.NavisGeometryListener.Server.Entities
 {
     public interface IIpcServer : IDisposable
     {

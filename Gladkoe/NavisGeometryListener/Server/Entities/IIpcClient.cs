@@ -1,6 +1,6 @@
 ﻿using System.ServiceModel;
 
-namespace Gladkoe.NavisGeometryListener.Server.Entities
+namespace RevitUtils.Geometry.NavisGeometryListener.Server.Entities
 {
     [ServiceContract]
     public interface IIpcClient
