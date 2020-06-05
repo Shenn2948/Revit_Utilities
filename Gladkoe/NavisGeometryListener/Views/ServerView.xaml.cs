@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Windows;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
@@ -99,8 +100,15 @@ namespace RevitUtils.Geometry.NavisGeometryListener.Views
                 TessellatedShapeBuilderResult result = builder.GetBuildResult();
 
                 var ds = DirectShape.CreateElement(doc, new ElementId(BuiltInCategory.OST_GenericModel));
-                ds.SetShape(result.GetGeometricalObjects());
+
+                ds.ApplicationId = Assembly.GetExecutingAssembly().GetType().GUID.ToString();
+                ds.ApplicationDataId = Guid.NewGuid().ToString();
                 ds.Name = "NavisWorksShape";
+                DirectShapeOptions dsOptions = ds.GetOptions();
+                dsOptions.ReferencingOption = DirectShapeReferencingOption.Referenceable;
+                ds.SetOptions(dsOptions);
+
+                ds.SetShape(result.GetGeometricalObjects());
             }
 
             _eventHandler.Action = Run;
