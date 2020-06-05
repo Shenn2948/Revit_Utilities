@@ -1,4 +1,6 @@
-﻿using System.ServiceModel;
+﻿using System.Collections.Generic;
+using System.ServiceModel;
+using System.Windows.Media.Media3D;
 
 namespace RevitUtils.Geometry.NavisGeometryListener.Server.Entities
 {
@@ -6,6 +8,6 @@ namespace RevitUtils.Geometry.NavisGeometryListener.Server.Entities
     public interface IIpcClient
     {
         [OperationContract(IsOneWay = true)]
-        void Send(string data);
+        void Send(List<Point3D[]> data);
     }
 }

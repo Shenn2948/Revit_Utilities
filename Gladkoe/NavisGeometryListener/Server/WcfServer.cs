@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ServiceModel;
+using System.Windows.Media.Media3D;
 using RevitUtils.Geometry.NavisGeometryListener.Server.Entities;
 
 namespace RevitUtils.Geometry.NavisGeometryListener.Server
@@ -49,7 +51,7 @@ namespace RevitUtils.Geometry.NavisGeometryListener.Server
                 this._server = server;
             }
 
-            public void Send(string data)
+            public void Send(List<Point3D[]> data)
             {
                 this._server.OnReceived(new DataReceivedEventArgs(data));
             }

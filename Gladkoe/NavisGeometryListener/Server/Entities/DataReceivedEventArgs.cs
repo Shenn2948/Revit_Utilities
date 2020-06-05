@@ -1,15 +1,17 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Windows.Media.Media3D;
 
 namespace RevitUtils.Geometry.NavisGeometryListener.Server.Entities
 {
     [Serializable]
     public sealed class DataReceivedEventArgs : EventArgs
     {
-        public DataReceivedEventArgs(string data)
+        public DataReceivedEventArgs(List<Point3D[]> data)
         {
             this.Data = data;
         }
 
-        public string Data { get; private set; }
+        public List<Point3D[]> Data { get; private set; }
     }
 }
