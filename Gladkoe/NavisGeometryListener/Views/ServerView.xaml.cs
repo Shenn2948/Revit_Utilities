@@ -12,7 +12,6 @@ namespace RevitUtils.Geometry.NavisGeometryListener.Views
 {
     public partial class ServerView : Window
     {
-        private readonly UIDocument _uidoc;
         private readonly ExternalEventHandler _eventHandler;
         private readonly ExternalEvent _externalEvent;
         private readonly IpcServer _server;
@@ -20,7 +19,6 @@ namespace RevitUtils.Geometry.NavisGeometryListener.Views
 
         public ServerView(UIDocument uidoc, ExternalEventHandler eventHandler, ExternalEvent externalEvent)
         {
-            _uidoc = uidoc;
             _eventHandler = eventHandler;
             _externalEvent = externalEvent;
             _doc = uidoc.Document;
@@ -102,11 +100,11 @@ namespace RevitUtils.Geometry.NavisGeometryListener.Views
 
                 var ds = DirectShape.CreateElement(doc, new ElementId(BuiltInCategory.OST_GenericModel));
                 ds.SetShape(result.GetGeometricalObjects());
-                ds.Name = "MyShape";
+                ds.Name = "NavisWorksShape";
             }
 
             _eventHandler.Action = Run;
-            _eventHandler.TransactionName = "Creating elements";
+            _eventHandler.TransactionName = "Importing navisWorks elements";
 
             _externalEvent.Raise();
         }
