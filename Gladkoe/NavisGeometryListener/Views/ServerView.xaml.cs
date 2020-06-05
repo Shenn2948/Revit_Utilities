@@ -1,28 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 using System.Windows;
-using System.Windows.Media.Media3D;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Selection;
+using Newtonsoft.Json;
 using RevitUtils.DataAccess.Entities.Handlers;
-using RevitUtils.Geometry.NavisGeometryListener.Server;
-using DataReceivedEventArgs = RevitUtils.Geometry.NavisGeometryListener.Server.Entities.DataReceivedEventArgs;
+using ZetaIpc.Runtime.Server;
 
 namespace RevitUtils.Geometry.NavisGeometryListener.Views
 {
-    /// <summary>
-    /// Interaction logic for ServerView.xaml
-    /// </summary>
     public partial class ServerView : Window
     {
         private readonly UIDocument _uidoc;
         private readonly ExternalEventHandler _eventHandler;
         private readonly ExternalEvent _externalEvent;
-        private readonly WcfServer _server;
+        private readonly IpcServer _server;
         private readonly Document _doc;
 
         public ServerView(UIDocument uidoc, ExternalEventHandler eventHandler, ExternalEvent externalEvent)
@@ -33,30 +26,34 @@ namespace RevitUtils.Geometry.NavisGeometryListener.Views
             _doc = uidoc.Document;
             InitializeComponent();
 
-            _server = new WcfServer();
-            _server.Received += ServerOnReceived;
+            _server = new IpcServer();
+            _server.ReceivedRequest += ServerOnReceivedRequest;
         }
 
-        private void ServerOnReceived(object sender, DataReceivedEventArgs e)
+        private void ServerOnReceivedRequest(object sender, ReceivedRequestEventArgs e)
         {
             var projectLocation = _doc.ActiveProjectLocation;
-            Transform t = projectLocation.GetTransform();
+            Transform t = projectLocation.GetTotalTransform();
 
-            List<List<XYZ>> s = e.Data.Select(x =>
-                                 {
-                                     var p1 = ToXyz(x[0]);
-                                     var p2 = ToXyz(x[1]);
-                                     var p3 = ToXyz(x[2]);
+            List<GeometryPoint[]> points = JsonConvert.DeserializeObject<List<GeometryPoint[]>>(e.Request);
 
-                                     var t1 = t.OfPoint(p1);
-                                     var t2 = t.OfPoint(p2);
-                                     var t3 = t.OfPoint(p3);
+            List<List<XYZ>> s = points.Select(x =>
+                                      {
+                                          var p1 = ToXyz(x[0]);
+                                          var p2 = ToXyz(x[1]);
+                                          var p3 = ToXyz(x[2]);
 
-                                     return new List<XYZ> { t1, t2, t3 };
-                                 })
-                                 .ToList();
+                                          var t1 = t.OfPoint(p1);
+                                          var t2 = t.OfPoint(p2);
+                                          var t3 = t.OfPoint(p3);
 
-            //Execute(s);
+                                          return new List<XYZ> { t1, t2, t3 };
+                                      })
+                                      .ToList();
+
+            Execute(s);
+
+            e.Handled = true;
         }
 
         private void StopServerBtn_OnClick(object sender, RoutedEventArgs e)
@@ -66,7 +63,7 @@ namespace RevitUtils.Geometry.NavisGeometryListener.Views
 
         private void StartServerBtn_OnClick(object sender, RoutedEventArgs e)
         {
-            _server.Start();
+            _server.Start(31306);
         }
 
         private void ServerView_OnClosed(object sender, EventArgs e)
@@ -74,7 +71,7 @@ namespace RevitUtils.Geometry.NavisGeometryListener.Views
             _server.Stop();
         }
 
-        private static XYZ ToXyz(Point3D p)
+        private static XYZ ToXyz(GeometryPoint p)
         {
             return new XYZ(p.X, p.Y, p.Z);
         }
@@ -97,11 +94,13 @@ namespace RevitUtils.Geometry.NavisGeometryListener.Views
                 }
 
                 builder.CloseConnectedFaceSet();
+                builder.Target = TessellatedShapeBuilderTarget.AnyGeometry;
+                builder.Fallback = TessellatedShapeBuilderFallback.Mesh;
                 builder.Build();
+
                 TessellatedShapeBuilderResult result = builder.GetBuildResult();
 
-                ElementId categoryId = new ElementId(BuiltInCategory.OST_GenericModel);
-                DirectShape ds = DirectShape.CreateElement(doc, categoryId);
+                var ds = DirectShape.CreateElement(doc, new ElementId(BuiltInCategory.OST_GenericModel));
                 ds.SetShape(result.GetGeometricalObjects());
                 ds.Name = "MyShape";
             }

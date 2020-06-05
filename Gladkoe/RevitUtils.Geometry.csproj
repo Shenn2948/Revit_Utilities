@@ -46,7 +46,7 @@
       <HintPath>C:\Program Files\Autodesk\Revit 2019\AdWindows.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.12.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <HintPath>..\packages\Newtonsoft.Json.12.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -67,20 +67,17 @@
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml" />
     <Reference Include="WindowsBase" />
+    <Reference Include="ZetaIpc, Version=1.0.0.9, Culture=neutral, PublicKeyToken=6c27b71344e0b736, processorArchitecture=MSIL">
+      <HintPath>..\packages\ZetaIpc.1.0.0.9\lib\netstandard2.0\ZetaIpc.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="NavisGeometryListener\Command.cs" />
-    <Compile Include="NavisGeometryListener\Server\Entities\DataReceivedEventArgs.cs" />
-    <Compile Include="NavisGeometryListener\Server\Entities\IIpcClient.cs" />
-    <Compile Include="NavisGeometryListener\Server\Entities\IIpcServer.cs" />
-    <Compile Include="NavisGeometryListener\Server\WcfServer.cs" />
+    <Compile Include="NavisGeometryListener\Views\GeometryPoint.cs" />
     <Compile Include="NavisGeometryListener\Views\ServerView.xaml.cs">
       <DependentUpon>ServerView.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <COMReference Include="Microsoft.Office.Core">
@@ -122,6 +119,9 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
