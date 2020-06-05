@@ -40,32 +40,19 @@ namespace RevitUtils.Geometry.NavisGeometryListener.Views
         private void ServerOnReceived(object sender, DataReceivedEventArgs e)
         {
             var projectLocation = _doc.ActiveProjectLocation;
-            XYZ origin = new XYZ(0, 0, 0);
-            ProjectPosition position = projectLocation.GetProjectPosition(origin);
-            XYZ projP = new XYZ(position.EastWest, position.NorthSouth, position.Elevation);
-
-            // Rotate the point (110,110,0) around the base point (100,100,0) where the angle is 60 degrees
-            //Transform rot = Transform.CreateRotationAtPoint(XYZ.BasisZ, position.Angle, projP);
-            //Transform pos = Transform.CreateTranslation(new XYZ(110, 110, 0));
-            //Transform rotPos = pos.Multiply(rot);
-
-            Transform rot = Transform.CreateRotation(XYZ.BasisZ, position.Angle);
-            //XYZ transformed = rot.OfPoint(new XYZ(110, 110, 0));
+            Transform t = projectLocation.GetTransform();
 
             List<List<XYZ>> s = e.Data.Select(x =>
                                  {
-                                     var p1 = ToXyz(x[0]).Subtract(projP);
-                                     var p2 = ToXyz(x[1]).Subtract(projP);
-                                     var p3 = ToXyz(x[2]).Subtract(projP);
+                                     var p1 = ToXyz(x[0]);
+                                     var p2 = ToXyz(x[1]);
+                                     var p3 = ToXyz(x[2]);
 
-                                     Transform rot1 = Transform.CreateRotationAtPoint(XYZ.BasisZ, position.Angle, p1);
-                                     Transform rot2 = Transform.CreateRotationAtPoint(XYZ.BasisZ, position.Angle, p2);
-                                     Transform rot3 = Transform.CreateRotationAtPoint(XYZ.BasisZ, position.Angle, p3);
-                                     var transformed1 = rot.OfVector(p1);
-                                     var transformed2 = rot.OfVector(p2);
-                                     var transformed3 = rot.OfVector(p3);
+                                     var t1 = t.OfPoint(p1);
+                                     var t2 = t.OfPoint(p2);
+                                     var t3 = t.OfPoint(p3);
 
-                                     return new List<XYZ> { transformed1, transformed2, transformed3 };
+                                     return new List<XYZ> { t1, t2, t3 };
                                  })
                                  .ToList();
 
