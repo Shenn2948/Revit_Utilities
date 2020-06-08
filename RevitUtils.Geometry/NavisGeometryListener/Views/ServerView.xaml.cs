@@ -99,22 +99,42 @@ namespace RevitUtils.Geometry.NavisGeometryListener.Views
 
                 TessellatedShapeBuilderResult result = builder.GetBuildResult();
 
-                var ds = DirectShape.CreateElement(doc, new ElementId(BuiltInCategory.OST_GenericModel));
+                //var ds = DirectShape.CreateElement(doc, new ElementId(BuiltInCategory.OST_GenericModel));
 
-                ds.ApplicationId = Assembly.GetExecutingAssembly().GetType().GUID.ToString();
-                ds.ApplicationDataId = Guid.NewGuid().ToString();
-                ds.Name = "NavisWorksShape";
-                DirectShapeOptions dsOptions = ds.GetOptions();
-                dsOptions.ReferencingOption = DirectShapeReferencingOption.Referenceable;
-                ds.SetOptions(dsOptions);
+                //ds.ApplicationId = Assembly.GetExecutingAssembly().GetType().GUID.ToString();
+                //ds.ApplicationDataId = Guid.NewGuid().ToString();
+                //ds.Name = "NavisWorksShape";
+                //DirectShapeOptions dsOptions = ds.GetOptions();
+                //dsOptions.ReferencingOption = DirectShapeReferencingOption.Referenceable;
+                //ds.SetOptions(dsOptions);
 
-                ds.SetShape(result.GetGeometricalObjects());
+                //ds.SetShape(result.GetGeometricalObjects());
+                CreateDirectShape(doc, result.GetGeometricalObjects());
             }
 
             _eventHandler.Action = Run;
             _eventHandler.TransactionName = "Importing navisWorks elements";
 
             _externalEvent.Raise();
+        }
+
+        private static void CreateDirectShape(Document doc, IList<GeometryObject> geometry)
+        {
+            DirectShapeLibrary directShapeLibrary = DirectShapeLibrary.GetDirectShapeLibrary(doc);
+            DirectShapeType directShapeType = DirectShapeType.Create(doc, "NavisWorksShape", new ElementId(BuiltInCategory.OST_GenericModel));
+            directShapeType.SetShape(geometry);
+            directShapeLibrary.AddDefinitionType("NavisWorksShape", directShapeType.Id);
+
+            DirectShape ds = DirectShape.CreateElementInstance(doc, directShapeType.Id, directShapeType.Category.Id, "NavisWorksShape", Transform.Identity);
+            ds.SetTypeId(directShapeType.Id);
+            ds.ApplicationId = Assembly.GetExecutingAssembly().GetType().GUID.ToString();
+            ds.ApplicationDataId = Guid.NewGuid().ToString();
+
+            DirectShapeOptions dsOptions = ds.GetOptions();
+            dsOptions.ReferencingOption = DirectShapeReferencingOption.Referenceable;
+            ds.SetOptions(dsOptions);
+
+            ds.SetShape(geometry);
         }
     }
 }
