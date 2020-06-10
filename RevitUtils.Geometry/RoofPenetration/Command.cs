@@ -73,19 +73,9 @@ namespace RevitUtils.Geometry.RoofPenetration
             return Result.Succeeded;
         }
 
-        private IEnumerable<Element> GetIntersects(Element e)
-        {
-            Solid solid = GetSolid(e);
-
-            return new FilteredElementCollector(_doc).WhereElementIsNotElementType()
-                                                     .WhereElementIsViewIndependent()
-                                                     .WherePasses(new ElementIntersectsSolidFilter(solid))
-                                                     .ToElements();
-        }
-
         private IEnumerable<Element> GetIntersectsBoundingBox(Element e)
         {
-            var bb = e.get_BoundingBox(null);
+            BoundingBoxXYZ bb = e.get_BoundingBox(null);
 
             return new FilteredElementCollector(_doc).WhereElementIsNotElementType()
                                                      .WhereElementIsViewIndependent()
@@ -102,21 +92,6 @@ namespace RevitUtils.Geometry.RoofPenetration
                                                                   .FirstOrDefault(x => x.FamilyName == "Family1" && x.Name == "Family1");
 
             return _doc.Create.NewFamilyInstance(pointRef, pointRef.GlobalPoint, new XYZ(1, 0, 0), open);
-        }
-
-        private static Solid GetSolid(Element e)
-        {
-            GeometryElement geomElement = e.get_Geometry(new Options());
-
-            foreach (GeometryObject obj in geomElement)
-            {
-                if (obj is Solid solid)
-                {
-                    return solid;
-                }
-            }
-
-            return null;
         }
     }
 }
