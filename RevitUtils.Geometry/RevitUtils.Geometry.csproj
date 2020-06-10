@@ -74,6 +74,7 @@
       <DependentUpon>ServerView.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RoofPenetration\Command.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RevitUtils.DataAccess\RevitUtils.DataAccess.csproj">
@@ -90,6 +91,7 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>
