@@ -32,8 +32,12 @@ namespace RevitUtils.Geometry.RoofPenetration
                     {
                         trans.Start("Placing a void family");
 
-                        FamilyInstance fi = CreateVoid();
+                        FamilyInstance fi = CreateVoid(GetFamilySymbol());
                         fi.get_Parameter(BuiltInParameter.INSTANCE_FREE_HOST_OFFSET_PARAM).Set(UnitUtils.ConvertToInternalUnits(100, DisplayUnitType.DUT_MILLIMETERS));
+                        fi.LookupParameter("width")?.Set(UnitUtils.ConvertToInternalUnits(300, DisplayUnitType.DUT_MILLIMETERS));
+                        fi.LookupParameter("length")?.Set(UnitUtils.ConvertToInternalUnits(300, DisplayUnitType.DUT_MILLIMETERS));
+                        fi.LookupParameter("depth")?.Set(UnitUtils.ConvertToInternalUnits(700, DisplayUnitType.DUT_MILLIMETERS));
+
                         if (trans.Commit() != TransactionStatus.Committed)
                         {
                             return Result.Failed;
@@ -55,9 +59,9 @@ namespace RevitUtils.Geometry.RoofPenetration
                         {
                             return Result.Failed;
                         }
-
-                        transGroup.Assimilate();
                     }
+
+                    transGroup.Assimilate();
                 }
             }
             catch (OperationCanceledException)
@@ -83,15 +87,16 @@ namespace RevitUtils.Geometry.RoofPenetration
                                                      .ToElements();
         }
 
-        private FamilyInstance CreateVoid()
+        private FamilyInstance CreateVoid(FamilySymbol open)
         {
-            var pointRef = _uidoc.Selection.PickObject(ObjectType.PointOnElement, "pick a point");
-
-            FamilySymbol open = new FilteredElementCollector(_doc).OfClass(typeof(FamilySymbol))
-                                                                  .OfType<FamilySymbol>()
-                                                                  .FirstOrDefault(x => x.FamilyName == "Family1" && x.Name == "Family1");
+            Reference pointRef = _uidoc.Selection.PickObject(ObjectType.PointOnElement, "pick a point");
 
             return _doc.Create.NewFamilyInstance(pointRef, pointRef.GlobalPoint, new XYZ(1, 0, 0), open);
+        }
+
+        private FamilySymbol GetFamilySymbol()
+        {
+            return new FilteredElementCollector(_doc).OfClass(typeof(FamilySymbol)).OfType<FamilySymbol>().FirstOrDefault(x => x.FamilyName == "GRA_Generic Model_UniversalCut" && x.Name == "GRA_Generic Model_UniversalCut");
         }
     }
 }
