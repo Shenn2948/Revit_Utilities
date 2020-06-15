@@ -1,10 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
+using RevitUtils.Geometry.Entities.Selection;
+using RevitUtils.Geometry.WallPenetration.Entities;
 
 namespace RevitUtils.Geometry.WallPenetration
 {
@@ -14,8 +15,6 @@ namespace RevitUtils.Geometry.WallPenetration
     {
         private FamilySymbol _roundOpen;
         private FamilySymbol _rectOpen;
-        private Wall _wall;
-        private MEPCurve _intersectingElement;
         private Document _doc;
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
@@ -27,26 +26,33 @@ namespace RevitUtils.Geometry.WallPenetration
             _roundOpen = GetFamilySymbol(_doc, "Отверстие_Поворотное", "Отверстие");
             _rectOpen = GetFamilySymbol(_doc, "DVS_Opening_Rectangle_FaceBased", "DVS_Opening_Rectangle_FaceBased");
 
-            _wall = GetWall(uidoc, _doc);
-            _intersectingElement = GetIntersectingElement(uidoc, _doc);
-
-            Run();
-
-            return Result.Succeeded;
-        }
-
-        private void Run()
-        {
-            Connector connector = _intersectingElement.ConnectorManager.Connectors.Cast<Connector>().FirstOrDefault();
-            Solid wallSolid = _wall.GetSolid();
-            Line intersectingCurve = GetIntersectingCurve(_intersectingElement, wallSolid);
-
-            IList<Reference> wallSideFaceRefs = HostObjectUtils.GetSideFaces(_wall, ShellLayerType.Interior);
-            Reference wallSideFaceRef = wallSideFaceRefs[0];
+            Wall wall = GetWall(uidoc, _doc);
+            IEnumerable<MEPCurve> intersectElement = GetIntersectElements(wall);
 
             using (TransactionGroup tranGr = new TransactionGroup(_doc))
             {
                 tranGr.Start("wall penetration");
+
+                foreach (MEPCurve intersector in intersectElement)
+                {
+                    Connector connector = intersector.ConnectorManager.Connectors.Cast<Connector>().FirstOrDefault();
+                    WallIntersectionData data = new WallIntersectionData(wall, intersector);
+                    AngleCalculator calculator = new AngleCalculator(data);
+
+                    Cut(data, calculator, connector);
+                }
+
+                tranGr.Assimilate();
+            }
+
+            return Result.Succeeded;
+        }
+
+        private void Cut(WallIntersectionData data, AngleCalculator calculator, IConnector connector)
+        {
+            using (TransactionGroup tranGr = new TransactionGroup(_doc))
+            {
+                tranGr.Start("wall penetration one element");
 
                 using (Transaction tran = new Transaction(_doc))
                 {
@@ -55,7 +61,7 @@ namespace RevitUtils.Geometry.WallPenetration
                         case ConnectorProfileType.Rectangular:
                             tran.Start("Creating wall penetration");
 
-                            FamilyInstance fi = _doc.Create.NewFamilyInstance(wallSideFaceRef, intersectingCurve.Origin, new XYZ(1, 0, 0), _rectOpen);
+                            FamilyInstance fi = _doc.Create.NewFamilyInstance(data.WallSideFaceRef, calculator.LocationPoint, new XYZ(1, 0, 0), _rectOpen);
                             fi.LookupParameter("Width").Set(connector.Width);
                             fi.LookupParameter("Height").Set(connector.Height);
 
@@ -65,53 +71,15 @@ namespace RevitUtils.Geometry.WallPenetration
 
                             tran.Start("Creating wall penetration");
 
-                            XYZ mid = Util.MidPoint(intersectingCurve);
-
-                            fi = _doc.Create.NewFamilyInstance(wallSideFaceRef, mid, new XYZ(1, 0, 0), _roundOpen);
-
-                            tran.Commit();
-
-                            tran.Start("Create lines");
-
-                            PlanarFace wallSideFace = _doc.GetElement(wallSideFaceRef).GetGeometryObjectFromReference(wallSideFaceRef) as PlanarFace;
-
-                            Transform t = Transform.CreateTranslation(mid);
-
-                            LocationCurve locationCurve = _wall.Location as LocationCurve;
-                            Line locLine = locationCurve.Curve as Line;
-
-                            XYZ wallDir = t.OfPoint(locLine.Direction);
-                            XYZ interDir = t.OfPoint(intersectingCurve.Direction);
-                            XYZ wallNormalDir = t.OfPoint(wallSideFace.FaceNormal);
-
-                            Line interDirLine = Line.CreateBound(mid, interDir);
-                            Line wallNormalLine = Line.CreateBound(mid, wallNormalDir);
-                            Line wallDirLine = Line.CreateBound(mid, wallDir);
+                            fi = _doc.Create.NewFamilyInstance(data.WallSideFaceRef, calculator.LocationPoint, new XYZ(1, 0, 0), _roundOpen);
 
                             tran.Commit();
 
                             tran.Start("SetPar");
 
-                            XYZ vectorInterDir = Util.GetVector(interDirLine);
-
-                            XYZ vectorWallNormal = Util.GetVector(wallNormalLine);
-                            XYZ vectorWallDir = Util.GetVector(wallDirLine);
-
-                            double vertical = vectorWallNormal.AngleOnPlaneTo(vectorInterDir, vectorWallDir.Normalize());
-                            double horizontal = vectorWallDir.AngleOnPlaneTo(vectorInterDir, XYZ.BasisZ);
-
-                            double angle90 = UnitUtils.ConvertToInternalUnits(90, DisplayUnitType.DUT_DECIMAL_DEGREES);
-
                             fi.LookupParameter("НаружныйДиаметр").Set(connector.Radius * 2 * 1.2);
-                            fi.LookupParameter("УголВертикальногоПоворота").Set(-vertical);
-                            fi.LookupParameter("УголГоризонтальногоПоворота").Set(horizontal - angle90);
-
-                            double x = Math.Tan(-vertical) * _wall.Width / 2;
-                            double z = Math.Tan(horizontal - angle90) * _wall.Width / 2;
-
-                            XYZ translation = new XYZ(mid.X + z, mid.Y, mid.Z + x) - mid;
-
-                            fi.Location.Move(translation);
+                            fi.LookupParameter("УголВертикальногоПоворота").Set(calculator.VerticalAngle);
+                            fi.LookupParameter("УголГоризонтальногоПоворота").Set(calculator.HorizontalAngle);
 
                             tran.Commit();
 
@@ -150,60 +118,12 @@ namespace RevitUtils.Geometry.WallPenetration
             return wall;
         }
 
-        private static Line GetIntersectingCurve(Element inter, Solid geomSolid)
+        private IEnumerable<MEPCurve> GetIntersectElements(Wall wall)
         {
-            if (inter.Location is LocationCurve locationCurve)
-            {
-                SolidCurveIntersection line = geomSolid.IntersectWithCurve(locationCurve.Curve, new SolidCurveIntersectionOptions());
-                Line curveSegment = line.GetCurveSegment(0) as Line;
-                return curveSegment;
-            }
-
-            return null;
-        }
-    }
-
-    public static class Util
-    {
-        public static XYZ GetVector(Curve curve)
-        {
-            XYZ vectorAb = curve.GetEndPoint(0);
-            XYZ vectorAc = curve.GetEndPoint(1);
-            XYZ vectorBc = vectorAc - vectorAb;
-            return vectorBc;
-        }
-
-        public static Solid GetSolid(this Element e, bool notVoid = false)
-        {
-            if (notVoid)
-            {
-                return e?.get_Geometry(new Options { ComputeReferences = true }).OfType<Solid>().FirstOrDefault(s => !s.Edges.IsEmpty);
-            }
-
-            return e?.get_Geometry(new Options { ComputeReferences = true }).OfType<Solid>().FirstOrDefault();
-        }
-
-        public static XYZ MidPoint(XYZ p, XYZ q)
-        {
-            return 0.5 * (p + q);
-        }
-
-        public static XYZ MidPoint(Line line)
-        {
-            return MidPoint(line.GetEndPoint(0), line.GetEndPoint(1));
-        }
-    }
-
-    public class WallSelectionFilter : ISelectionFilter
-    {
-        public bool AllowElement(Element elem)
-        {
-            return elem is Wall;
-        }
-
-        public bool AllowReference(Reference reference, XYZ position)
-        {
-            return false;
+            return new FilteredElementCollector(_doc).WhereElementIsNotElementType()
+                                                     .WhereElementIsViewIndependent()
+                                                     .WherePasses(new ElementIntersectsElementFilter(wall))
+                                                     .OfType<MEPCurve>();
         }
     }
 }
