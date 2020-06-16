@@ -75,6 +75,7 @@
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RoofPenetration\Command.cs" />
+    <Compile Include="RotateCamera\Command.cs" />
     <Compile Include="WallPenetration\Entities\AngleCalculator.cs" />
     <Compile Include="WallPenetration\Command.cs" />
     <Compile Include="Utils\Util.cs" />
