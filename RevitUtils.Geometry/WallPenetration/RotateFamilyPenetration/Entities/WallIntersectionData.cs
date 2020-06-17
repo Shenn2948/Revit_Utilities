@@ -2,7 +2,7 @@
 using Autodesk.Revit.DB;
 using RevitUtils.Geometry.Utils;
 
-namespace RevitUtils.Geometry.WallPenetration.Entities
+namespace RevitUtils.Geometry.WallPenetration.RotateFamilyPenetration.Entities
 {
     public class WallIntersectionData
     {

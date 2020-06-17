@@ -1,6 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 
-namespace RevitUtils.Geometry.WallPenetration.Entities
+namespace RevitUtils.Geometry.WallPenetration.RotateFamilyPenetration.Entities
 {
     public class DirectionInfo
     {

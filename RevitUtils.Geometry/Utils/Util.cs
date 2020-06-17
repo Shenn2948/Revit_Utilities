@@ -18,17 +18,37 @@ namespace RevitUtils.Geometry.Utils
 
         public static Solid GetSolid(this Element e, bool notVoid = false)
         {
-            if (notVoid)
+            GeometryElement geo = e.get_Geometry(new Options { ComputeReferences = true });
+
+            if (e is FamilyInstance instance)
             {
-                return e?.get_Geometry(new Options { ComputeReferences = true }).OfType<Solid>().FirstOrDefault(s => !s.Edges.IsEmpty);
+                Options geometryOptions = e.Document.Application.Create.NewGeometryOptions();
+                GeometryElement slaveGeo = instance.GetOriginalGeometry(geometryOptions);
+                geo = slaveGeo.GetTransformed(instance.GetTransform());
             }
 
-            return e?.get_Geometry(new Options { ComputeReferences = true }).OfType<Solid>().FirstOrDefault();
+            if (notVoid)
+            {
+                return geo.OfType<Solid>().FirstOrDefault(s => !s.Edges.IsEmpty);
+            }
+
+            return geo.OfType<Solid>().FirstOrDefault();
         }
 
         public static XYZ MidPoint(XYZ p, XYZ q)
         {
             return 0.5 * (p + q);
+        }
+
+        public static XYZ MidPoint(Face face)
+        {
+            BoundingBoxUV b = face.GetBoundingBox();
+            UV p = b.Min;
+            UV q = b.Max;
+            UV midparam = p + 0.5 * (q - p);
+            XYZ midpoint = face.Evaluate(midparam);
+
+            return midpoint;
         }
 
         public static XYZ MidPoint(Line line)
@@ -44,14 +64,16 @@ namespace RevitUtils.Geometry.Utils
             double verticalLength = v.Z * v.Z;
 
             return 0 < v.Z && MinimumSlope < verticalLength / horizontalLength;
-
-            //return _eps < v.Normalize().Z;
-            //return _eps < v.Normalize().Z && IsVertical( v.Normalize(), tolerance );
         }
 
         public static bool IsVertical(XYZ v)
         {
             return IsZero(v.X) && IsZero(v.Y);
+        }
+
+        public static bool IsParallel(XYZ p, XYZ q)
+        {
+            return p.CrossProduct(q).IsZeroLength();
         }
 
         public static bool IsZero(double a, double tolerance = Eps)
