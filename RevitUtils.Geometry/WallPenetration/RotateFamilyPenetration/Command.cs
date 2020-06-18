@@ -4,9 +4,11 @@ using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
+using RevitUtils.Geometry.Entities.Extensions;
 using RevitUtils.Geometry.Entities.Selection;
 using RevitUtils.Geometry.RotateCamera;
 using RevitUtils.Geometry.Utils;
+using RevitUtils.Geometry.WallPenetration.Entities;
 using RevitUtils.Geometry.WallPenetration.RotateFamilyPenetration.Entities;
 
 namespace RevitUtils.Geometry.WallPenetration.RotateFamilyPenetration
@@ -26,8 +28,8 @@ namespace RevitUtils.Geometry.WallPenetration.RotateFamilyPenetration
             _uidoc = uiapp.ActiveUIDocument;
             _doc = _uidoc.Document;
 
-            _roundOpen = GetFamilySymbol(_doc, "Отверстие_Поворотное", "Отверстие");
-            _rectOpen = GetFamilySymbol(_doc, "ОтверстиеПрямоугольное_Поворотное", "Отверстие");
+            _roundOpen = _doc.GetFamilySymbol("Отверстие_Поворотное", "Отверстие");
+            _rectOpen = _doc.GetFamilySymbol("ОтверстиеПрямоугольное_Поворотное", "Отверстие");
 
             Wall wall = GetWall();
 
@@ -39,8 +41,8 @@ namespace RevitUtils.Geometry.WallPenetration.RotateFamilyPenetration
 
         private void FamilyInstanceIntersection(Wall wall)
         {
-            FamilyInstance intersector = (FamilyInstance)GetIntersectingElement();
-            WallExtrusion extrusion = new WallExtrusion(intersector);
+            var intersector = GetIntersectingElement();
+            WallExtrusion extrusion = new WallExtrusion(intersector, wall);
 
             WallIntersectionData data = new WallIntersectionData(wall, intersector);
             AngleCalculator calculator = new AngleCalculator(data);
@@ -170,19 +172,6 @@ namespace RevitUtils.Geometry.WallPenetration.RotateFamilyPenetration
             }
         }
 
-        private static FamilySymbol GetFamilySymbol(Document doc, string familyName, string name)
-        {
-            FamilySymbol symbol = new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol))
-                                                                   .OfType<FamilySymbol>()
-                                                                   .FirstOrDefault(x => x.FamilyName == familyName && x.Name == name);
-
-            if (symbol != null && !symbol.IsActive)
-            {
-                symbol.Activate();
-            }
-
-            return symbol;
-        }
 
         private Element GetIntersectingElement()
         {

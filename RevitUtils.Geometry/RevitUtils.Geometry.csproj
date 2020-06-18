@@ -68,6 +68,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Entities\Extensions\DocumentExtension.cs" />
     <Compile Include="NavisGeometryListener\Command.cs" />
     <Compile Include="NavisGeometryListener\Views\GeometryPoint.cs" />
     <Compile Include="NavisGeometryListener\Views\ServerView.xaml.cs">
@@ -76,13 +77,13 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RoofPenetration\Command.cs" />
     <Compile Include="RotateCamera\Command.cs" />
+    <Compile Include="WallPenetration\LinePenetration\Command.cs" />
     <Compile Include="WallPenetration\RotateFamilyPenetration\Entities\AngleCalculator.cs" />
     <Compile Include="WallPenetration\RotateFamilyPenetration\Command.cs" />
     <Compile Include="Utils\Util.cs" />
     <Compile Include="Entities\Selection\WallSelectionFilter.cs" />
     <Compile Include="WallPenetration\RotateFamilyPenetration\Entities\DirectionInfo.cs" />
-    <Compile Include="WallPenetration\RotateFamilyPenetration\Entities\FaceCollector.cs" />
-    <Compile Include="WallPenetration\RotateFamilyPenetration\Entities\WallExtrusion.cs" />
+    <Compile Include="WallPenetration\Entities\WallExtrusion.cs" />
     <Compile Include="WallPenetration\RotateFamilyPenetration\Entities\WallIntersectionData.cs" />
   </ItemGroup>
   <ItemGroup>
