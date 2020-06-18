@@ -153,14 +153,22 @@ namespace RevitUtils.Geometry.WallPenetration.LinePenetration
             }
         }
 
-        private static void SetAppropriateDimensions(Element intersector, FamilyInstance fi, WallExtrusion extrusion)
+        private static void SetAppropriateDimensions(Element intersector, Element element, WallExtrusion extrusion)
         {
-            BoundingBoxXYZ extrusionBb = fi.get_BoundingBox(null);
+            BoundingBoxXYZ extrusionBb = element.get_BoundingBox(null);
             var interBb = intersector.get_BoundingBox(null);
+
+            double offset = UnitUtils.ConvertToInternalUnits(100, DisplayUnitType.DUT_MILLIMETERS);
+
             if (!extrusionBb.Min.IsAlmostEqualTo(interBb.Min))
             {
-                fi.LookupParameter("h").Set(extrusion.Width);
-                fi.LookupParameter("w").Set(extrusion.Height);
+                element.LookupParameter("h").Set(extrusion.Width + offset);
+                element.LookupParameter("w").Set(extrusion.Height + offset);
+            }
+            else
+            {
+                element.LookupParameter("h").Set(extrusion.Height + offset);
+                element.LookupParameter("w").Set(extrusion.Width + offset);
             }
         }
     }
