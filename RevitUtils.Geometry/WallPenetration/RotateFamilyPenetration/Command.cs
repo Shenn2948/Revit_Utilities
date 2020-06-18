@@ -17,8 +17,6 @@ namespace RevitUtils.Geometry.WallPenetration.RotateFamilyPenetration
     [Regeneration(RegenerationOption.Manual)]
     public class Command : IExternalCommand
     {
-        private FamilySymbol _roundOpen;
-        private FamilySymbol _rectOpen;
         private Document _doc;
         private UIDocument _uidoc;
 
@@ -27,9 +25,6 @@ namespace RevitUtils.Geometry.WallPenetration.RotateFamilyPenetration
             UIApplication uiapp = commandData.Application;
             _uidoc = uiapp.ActiveUIDocument;
             _doc = _uidoc.Document;
-
-            _roundOpen = _doc.GetFamilySymbol("Отверстие_Поворотное", "Отверстие");
-            _rectOpen = _doc.GetFamilySymbol("ОтверстиеПрямоугольное_Поворотное", "Отверстие");
 
             Wall wall = GetWall();
 
@@ -48,24 +43,6 @@ namespace RevitUtils.Geometry.WallPenetration.RotateFamilyPenetration
             AngleCalculator calculator = new AngleCalculator(data);
 
             Cut(data, calculator, extrusion);
-
-            //Solid solid = intersector.GetSolid(true);
-            //PlanarFace topFace = solid.Faces.OfType<PlanarFace>().FirstOrDefault(f => Util.PointsUpwards(f.FaceNormal));
-            //XYZ centroid = solid.ComputeCentroid();
-
-            //var transform = Transform.CreateTranslation(centroid);
-
-            //var xx = transform.OfPoint(topFace.FaceNormal);
-            //var perpend = Line.CreateBound(transform.Origin, xx);
-
-            //using (var tran = new Transaction(_doc))
-            //{
-            //    tran.Start("Add line");
-
-            //    Creator.CreateModelCurve(_uidoc.Application, perpend);
-
-            //    tran.Commit();
-            //}
         }
 
         private void MEPIntersection(Wall wall)
@@ -76,20 +53,23 @@ namespace RevitUtils.Geometry.WallPenetration.RotateFamilyPenetration
             {
                 tranGr.Start("wall penetration");
 
+                FamilySymbol _roundOpen = _doc.GetFamilySymbol("Отверстие_Поворотное", "Отверстие");
+                FamilySymbol _rectOpen = _doc.GetFamilySymbol("ОтверстиеПрямоугольное_Поворотное", "Отверстие");
+
                 foreach (MEPCurve intersector in intersectElement)
                 {
                     Connector connector = intersector.ConnectorManager.Connectors.Cast<Connector>().FirstOrDefault();
                     WallIntersectionData data = new WallIntersectionData(wall, intersector);
                     AngleCalculator calculator = new AngleCalculator(data);
 
-                    Cut(data, calculator, connector);
+                    Cut(data, calculator, connector, _roundOpen, _rectOpen);
                 }
 
                 tranGr.Assimilate();
             }
         }
 
-        private void Cut(WallIntersectionData data, AngleCalculator calculator, IConnector connector)
+        private void Cut(WallIntersectionData data, AngleCalculator calculator, IConnector connector, FamilySymbol _roundOpen, FamilySymbol _rectOpen)
         {
             using (TransactionGroup tranGr = new TransactionGroup(_doc))
             {
@@ -148,6 +128,9 @@ namespace RevitUtils.Geometry.WallPenetration.RotateFamilyPenetration
             {
                 tranGr.Start("wall penetration one element");
 
+                var _roundOpen = _doc.GetFamilySymbol("Отверстие_Поворотное", "Отверстие");
+                var _rectOpen = _doc.GetFamilySymbol("ОтверстиеПрямоугольное_Поворотное", "Отверстие");
+
                 using (Transaction tran = new Transaction(_doc))
                 {
                     tran.Start("Creating wall penetration");
@@ -158,7 +141,7 @@ namespace RevitUtils.Geometry.WallPenetration.RotateFamilyPenetration
 
                     tran.Start("SetPar");
 
-                    double offset = UnitUtils.ConvertToInternalUnits(100, DisplayUnitType.DUT_MILLIMETERS);
+                    double offset = UnitUtils.ConvertToInternalUnits(0, DisplayUnitType.DUT_MILLIMETERS);
 
                     fi.LookupParameter("ШиринаОтверстия").Set(extrusion.Width + offset);
                     fi.LookupParameter("ВысотаОтверстия").Set(extrusion.Height + offset);

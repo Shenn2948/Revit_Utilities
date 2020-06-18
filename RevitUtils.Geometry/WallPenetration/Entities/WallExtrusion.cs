@@ -30,10 +30,11 @@ namespace RevitUtils.Geometry.WallPenetration.Entities
             GetGabarits(sideFaces[0]);
 
             Line locationCurve = Line.CreateBound(Util.MidPoint(sideFaces[0]), Util.MidPoint(sideFaces[1]));
-            LocationCurve = GetIntersectingCurve(locationCurve);
+            //LocationCurve = GetIntersectingCurve(locationCurve);
+            LocationCurve = locationCurve;
         }
 
-        private Line GetIntersectingCurve(Line locationCurve)
+        private Line GetIntersectingCurve(Curve locationCurve)
         {
             Solid wallSolid = _wall.GetSolid();
 
