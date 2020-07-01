@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
@@ -27,8 +28,11 @@ namespace RevitUtils.Geometry.RotateCamera
                 {
                     (Element element, Transform transform) = PickInstance();
                     Edge edge = PickEdge(element);
+                    //PlanarFace face = PickFace(element);
 
-                    SetCamera(transform, element, edge, view3D);
+                    //SetCamera(transform, element, edge, view3D);
+                    //SetCamera(element, edge, face, view3D);
+                    SetCamera(element, edge, view3D);
                 }
             }
             catch (Exception e)
@@ -40,14 +44,28 @@ namespace RevitUtils.Geometry.RotateCamera
             return Result.Succeeded;
         }
 
+        private void SetCamera(Element element, Edge edge, View3D view3D)
+        {
+            if (edge.AsCurve() is Line locationCurve)
+            {
+                var vec = Util.GetVector(locationCurve);
+                var vecNorm = vec.Normalize();
+                var s = element.GetSolid(true);
+                var dotPr = s.Faces.OfType<PlanarFace>().Select(x => x.FaceNormal.DotProduct(vecNorm)).ToList();
+                var normal = s.Faces.OfType<PlanarFace>().Select(x => x.FaceNormal).FirstOrDefault(x => x.DotProduct(vecNorm) == 1);
+
+                view3D.SetOrientation(new ViewOrientation3D(locationCurve.Origin, normal, vec));
+                _uidoc.ShowElements(element);
+                _uidoc.RefreshActiveView();
+            }
+        }
+
         private void SetCamera(Transform transform, Element element, Edge edge, View3D view3D)
         {
             if (edge.AsCurve() is Line locationCurve)
             {
-                //XYZ dir = transform.OfPoint(locationCurve.Direction);
-                //Line elementDirectionLine = Line.CreateBound(transform.Origin, dir);
-
-                (Line perpendLine, Line orthLine) = PerpendLine(transform, locationCurve);
+                //(Line perpendLine, Line orthLine) = PerpendLine(transform, locationCurve);
+                (Line perpendLine, Line orthLine) = PerpendLine(locationCurve);
 
                 using (var tran = new Transaction(_doc))
                 {
@@ -80,6 +98,24 @@ namespace RevitUtils.Geometry.RotateCamera
             return (perpendLine, orthLine);
         }
 
+        private static (Line perpendLine, Line orthLine) PerpendLine(Line locationCurve)
+        {
+            XYZ vector = Util.GetVector(locationCurve);
+            Transform t = Transform.CreateTranslation(vector);
+
+            Vector3d vector3d = vector.ToVector3d();
+            Vector3d crossVector3d = vector3d.Cross(vector3d.OrthogonalVector);
+            XYZ cross = crossVector3d.ToXyz();
+
+            cross = t.OfPoint(cross);
+            Line perpendLine = Line.CreateBound(locationCurve.Origin, cross);
+
+            XYZ orth = vector3d.OrthogonalVector.ToXyz();
+            orth = t.OfPoint(orth);
+            Line orthLine = Line.CreateBound(locationCurve.Origin, orth);
+            return (perpendLine, orthLine);
+        }
+
         private (Element element, Transform transform) PickInstance()
         {
             var elementRef = _uidoc.Selection.PickObject(ObjectType.Element, new InstanceSelectionFilter(), "Выберите семейство либо сборку.");
@@ -108,14 +144,13 @@ namespace RevitUtils.Geometry.RotateCamera
             return edge;
         }
 
-        private Face PickFace(Element instance)
+        private PlanarFace PickFace(Element instance)
         {
             var edgeRef = _uidoc.Selection.PickObject(ObjectType.Face,
-                                                      new EdgeSelectionFilter(instance),
-                                                      "Выберите траекторию, перпендикулярно которой будет расположена точка обзора.");
+                                                      new FaceSelectionFilter(instance),
+                                                      "Выберите поверхность, параллельную траектории.");
             GeometryObject geoObject = _doc.GetElement(edgeRef).GetGeometryObjectFromReference(edgeRef);
-            Face edge = geoObject as Face;
-            return edge;
+            return geoObject as PlanarFace;
         }
 
         private XYZ AngledVector(XYZ xyz, double angle, string s)
@@ -183,6 +218,35 @@ namespace RevitUtils.Geometry.RotateCamera
         public bool AllowReference(Reference reference, XYZ position)
         {
             return true;
+        }
+    }
+
+    public class FaceSelectionFilter : ISelectionFilter
+    {
+        private readonly Element _element;
+        private readonly Document _doc;
+
+        public FaceSelectionFilter(Element element)
+        {
+            _doc = element.Document;
+            _element = element;
+        }
+
+        public bool AllowElement(Element elem)
+        {
+            if (_element is AssemblyInstance assemblyInstance)
+            {
+                var memberIds = assemblyInstance.GetMemberIds();
+
+                return memberIds.Contains(elem.Id);
+            }
+
+            return elem.Id == _element.Id;
+        }
+
+        public bool AllowReference(Reference reference, XYZ position)
+        {
+            return _doc.GetElement(reference).GetGeometryObjectFromReference(reference) is PlanarFace;
         }
     }
 
