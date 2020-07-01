@@ -44,24 +44,16 @@ namespace RevitUtils.Geometry.RotateCamera
         {
             if (edge.AsCurve() is Line locationCurve)
             {
-                XYZ dir = transform.OfPoint(locationCurve.Direction);
-                Line elementDirectionLine = Line.CreateBound(transform.Origin, dir);
+                //XYZ dir = transform.OfPoint(locationCurve.Direction);
+                //Line elementDirectionLine = Line.CreateBound(transform.Origin, dir);
 
-                Vector3d vector3d = new Vector3d(locationCurve.Direction.X, locationCurve.Direction.Y, locationCurve.Direction.Z);
-                Vector3d crossVector3d = vector3d.Cross(vector3d.OrthogonalVector);
-                XYZ cross = new XYZ(crossVector3d.X, crossVector3d.Y, crossVector3d.Z);
-                cross = transform.OfPoint(cross);
-                Line perpendLine = Line.CreateBound(transform.Origin, cross);
-
-                XYZ orth = new XYZ(vector3d.OrthogonalVector.X, vector3d.OrthogonalVector.Y, vector3d.OrthogonalVector.Z);
-                orth = transform.OfPoint(orth);
-                Line orthLine = Line.CreateBound(transform.Origin, orth);
+                (Line perpendLine, Line orthLine) = PerpendLine(transform, locationCurve);
 
                 using (var tran = new Transaction(_doc))
                 {
                     tran.Start("Add line");
 
-                    Creator.CreateModelCurve(_uidoc.Application, elementDirectionLine);
+                    Creator.CreateModelCurve(_uidoc.Application, locationCurve);
                     Creator.CreateModelCurve(_uidoc.Application, perpendLine);
                     Creator.CreateModelCurve(_uidoc.Application, orthLine);
 
@@ -72,6 +64,20 @@ namespace RevitUtils.Geometry.RotateCamera
                 //_uidoc.ShowElements(element);
                 //_uidoc.RefreshActiveView();
             }
+        }
+
+        private static (Line perpendLine, Line orthLine) PerpendLine(Transform transform, Line locationCurve)
+        {
+            Vector3d vector3d = locationCurve.Direction.ToVector3d();
+            Vector3d crossVector3d = vector3d.Cross(vector3d.OrthogonalVector);
+            XYZ cross = crossVector3d.ToXyz();
+            cross = transform.OfPoint(cross);
+            Line perpendLine = Line.CreateBound(transform.Origin, cross);
+
+            XYZ orth = vector3d.OrthogonalVector.ToXyz();
+            orth = transform.OfPoint(orth);
+            Line orthLine = Line.CreateBound(transform.Origin, orth);
+            return (perpendLine, orthLine);
         }
 
         private (Element element, Transform transform) PickInstance()
@@ -200,6 +206,29 @@ namespace RevitUtils.Geometry.RotateCamera
             Plane plane = Plane.CreateByThreePoints(line.GetEndPoint(0), line.Direction, line.GetEndPoint(1));
 
             return plane;
+        }
+    }
+
+    public static class GriExtensions
+    {
+        public static XYZ ToXyz(this Point3d p)
+        {
+            return new XYZ(p.X, p.Y, p.Z);
+        }
+
+        public static Point3d ToPoint3d(this XYZ p)
+        {
+            return new Point3d(p.X, p.Y, p.Z);
+        }
+
+        public static Vector3d ToVector3d(this XYZ p)
+        {
+            return new Vector3d(p.X, p.Y, p.Z);
+        }
+
+        public static XYZ ToXyz(this Vector3d p)
+        {
+            return new XYZ(p.X, p.Y, p.Z);
         }
     }
 }
