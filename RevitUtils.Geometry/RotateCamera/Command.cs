@@ -1,7 +1,10 @@
-﻿using Autodesk.Revit.Attributes;
+﻿using System;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
+using GeometRi;
+using RevitUtils.DataAccess.Extensions;
 using RevitUtils.Geometry.Utils;
 
 namespace RevitUtils.Geometry.RotateCamera
@@ -18,12 +21,20 @@ namespace RevitUtils.Geometry.RotateCamera
             _uidoc = uiapp.ActiveUIDocument;
             _doc = _uidoc.Document;
 
-            if (_doc.ActiveView is View3D view3D)
+            try
             {
-                (Element element, Transform transform) = PickInstance();
-                Edge edge = PickEdge(element);
+                if (_doc.ActiveView is View3D view3D)
+                {
+                    (Element element, Transform transform) = PickInstance();
+                    Edge edge = PickEdge(element);
 
-                SetCamera(transform, element, edge, view3D);
+                    SetCamera(transform, element, edge, view3D);
+                }
+            }
+            catch (Exception e)
+            {
+                e.ShowRevitDialog();
+                return Result.Failed;
             }
 
             return Result.Succeeded;
@@ -34,32 +45,32 @@ namespace RevitUtils.Geometry.RotateCamera
             if (edge.AsCurve() is Line locationCurve)
             {
                 XYZ dir = transform.OfPoint(locationCurve.Direction);
+                Line elementDirectionLine = Line.CreateBound(transform.Origin, dir);
 
-                var l = Line.CreateBound(transform.Origin, dir);
-                XYZ dir2 = XYZ.BasisZ;
+                Vector3d vector3d = new Vector3d(locationCurve.Direction.X, locationCurve.Direction.Y, locationCurve.Direction.Z);
+                Vector3d crossVector3d = vector3d.Cross(vector3d.OrthogonalVector);
+                XYZ cross = new XYZ(crossVector3d.X, crossVector3d.Y, crossVector3d.Z);
+                cross = transform.OfPoint(cross);
+                Line perpendLine = Line.CreateBound(transform.Origin, cross);
 
-                if (Util.IsVertical(locationCurve.Direction))
+                XYZ orth = new XYZ(vector3d.OrthogonalVector.X, vector3d.OrthogonalVector.Y, vector3d.OrthogonalVector.Z);
+                orth = transform.OfPoint(orth);
+                Line orthLine = Line.CreateBound(transform.Origin, orth);
+
+                using (var tran = new Transaction(_doc))
                 {
-                    dir2 = XYZ.BasisY;
+                    tran.Start("Add line");
+
+                    Creator.CreateModelCurve(_uidoc.Application, elementDirectionLine);
+                    Creator.CreateModelCurve(_uidoc.Application, perpendLine);
+                    Creator.CreateModelCurve(_uidoc.Application, orthLine);
+
+                    tran.Commit();
                 }
 
-                var xx = transform.OfPoint(dir2);
-
-                var perpend = Line.CreateBound(transform.Origin, xx);
-
-                //using (var tran = new Transaction(_doc))
-                //{
-                //    tran.Start("Add line");
-
-                //    Creator.CreateModelCurve(_uidoc.Application, l);
-                //    Creator.CreateModelCurve(_uidoc.Application, perpend);
-
-                //    tran.Commit();
-                //}
-
-                view3D.SetOrientation(new ViewOrientation3D(transform.Origin, Util.GetVector(perpend), Util.GetVector(l)));
-                _uidoc.ShowElements(element);
-                _uidoc.RefreshActiveView();
+                //view3D.SetOrientation(new ViewOrientation3D(transform.Origin, Util.GetVector(perpendLine), Util.GetVector(elementDirectionLine)));
+                //_uidoc.ShowElements(element);
+                //_uidoc.RefreshActiveView();
             }
         }
 
@@ -71,7 +82,7 @@ namespace RevitUtils.Geometry.RotateCamera
 
             if (element is Instance instance)
             {
-                transform = instance.GetTransform();
+                transform = instance.GetTotalTransform();
             }
             else if (element is AssemblyInstance assemblyInstance)
             {
@@ -90,6 +101,43 @@ namespace RevitUtils.Geometry.RotateCamera
             Edge edge = geoObject as Edge;
             return edge;
         }
+
+        private Face PickFace(Element instance)
+        {
+            var edgeRef = _uidoc.Selection.PickObject(ObjectType.Face,
+                                                      new EdgeSelectionFilter(instance),
+                                                      "Выберите траекторию, перпендикулярно которой будет расположена точка обзора.");
+            GeometryObject geoObject = _doc.GetElement(edgeRef).GetGeometryObjectFromReference(edgeRef);
+            Face edge = geoObject as Face;
+            return edge;
+        }
+
+        private XYZ AngledVector(XYZ xyz, double angle, string s)
+        {
+            var cos = Math.Cos(angle);
+            var sin = Math.Sin(angle);
+
+            switch (s)
+            {
+                case "x":
+                    var y = xyz.Y * cos - xyz.Z * sin;
+                    var z = xyz.Y * sin + xyz.Z * cos;
+
+                    return new XYZ(xyz.X, y, z);
+                case "y":
+                    var x = xyz.X * cos + xyz.Z * sin;
+                    z = -xyz.X * sin + xyz.Z * cos;
+
+                    return new XYZ(x, xyz.Y, z);
+                case "z":
+                    x = xyz.X * cos - xyz.Y * sin;
+                    y = xyz.X * sin + xyz.Y * cos;
+
+                    return new XYZ(x, y, xyz.Z);
+            }
+
+            return new XYZ();
+        }
     }
 
     public class InstanceSelectionFilter : ISelectionFilter
@@ -101,7 +149,7 @@ namespace RevitUtils.Geometry.RotateCamera
 
         public bool AllowReference(Reference reference, XYZ position)
         {
-            return true;
+            return false;
         }
     }
 
@@ -150,6 +198,7 @@ namespace RevitUtils.Geometry.RotateCamera
         private static Plane GetPlane(Line line)
         {
             Plane plane = Plane.CreateByThreePoints(line.GetEndPoint(0), line.Direction, line.GetEndPoint(1));
+
             return plane;
         }
     }
