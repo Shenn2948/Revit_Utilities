@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
@@ -49,15 +50,46 @@ namespace RevitUtils.Geometry.RotateCamera
             if (edge.AsCurve() is Line locationCurve)
             {
                 var vec = Util.GetVector(locationCurve);
-                var vecNorm = vec.Normalize();
-                var s = element.GetSolid(true);
-                var dotPr = s.Faces.OfType<PlanarFace>().Select(x => x.FaceNormal.DotProduct(vecNorm)).ToList();
-                var normal = s.Faces.OfType<PlanarFace>().Select(x => x.FaceNormal).FirstOrDefault(x => x.DotProduct(vecNorm) == 1);
 
-                view3D.SetOrientation(new ViewOrientation3D(locationCurve.Origin, normal, vec));
+                XYZ upDirection = GetUpDirection(edge, locationCurve);
+                if (upDirection == null)
+                {
+                    return;
+                }
+
+                view3D.SetOrientation(new ViewOrientation3D(locationCurve.Origin, upDirection, vec));
                 _uidoc.ShowElements(element);
                 _uidoc.RefreshActiveView();
             }
+        }
+
+        private static XYZ DetermineMostSuitableNormal(IReadOnlyCollection<XYZ> normals)
+        {
+            var upVec = normals.Where(x => x != null).FirstOrDefault(Util.PointsUpwards);
+
+            return upVec ?? normals.First(x => x != null).Negate();
+        }
+
+        private static XYZ GetUpDirection(Edge edge, Line loc)
+        {
+            XYZ f1n = ComputeFaceNormal(edge.GetFace(0), loc);
+            XYZ f2n = ComputeFaceNormal(edge.GetFace(1), loc);
+
+            return DetermineMostSuitableNormal(new List<XYZ> { f1n, f2n });
+        }
+
+        private static XYZ ComputeFaceNormal(Face f, Line locationCurve)
+        {
+            if (f == null)
+            {
+                return null;
+            }
+
+            var uv = f.Project(locationCurve.Origin)?.UVPoint;
+
+            return uv == null
+                       ? null
+                       : f.ComputeNormal(uv);
         }
 
         private void SetCamera(Transform transform, Element element, Edge edge, View3D view3D)
@@ -146,9 +178,7 @@ namespace RevitUtils.Geometry.RotateCamera
 
         private PlanarFace PickFace(Element instance)
         {
-            var edgeRef = _uidoc.Selection.PickObject(ObjectType.Face,
-                                                      new FaceSelectionFilter(instance),
-                                                      "Выберите поверхность, параллельную траектории.");
+            var edgeRef = _uidoc.Selection.PickObject(ObjectType.Face, new FaceSelectionFilter(instance), "Выберите поверхность, параллельную траектории.");
             GeometryObject geoObject = _doc.GetElement(edgeRef).GetGeometryObjectFromReference(edgeRef);
             return geoObject as PlanarFace;
         }
