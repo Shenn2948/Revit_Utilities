@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
@@ -29,11 +28,7 @@ namespace RevitUtils.Geometry.RotateCamera
                 {
                     (Element element, Transform transform) = PickInstance();
                     Edge edge = PickEdge(element);
-                    //PlanarFace face = PickFace(element);
-
-                    //SetCamera(transform, element, edge, view3D);
-                    //SetCamera(element, edge, face, view3D);
-                    SetCamera(element, edge, view3D);
+                    SetCamera(element, transform, edge, view3D);
                 }
             }
             catch (Exception e)
@@ -45,59 +40,23 @@ namespace RevitUtils.Geometry.RotateCamera
             return Result.Succeeded;
         }
 
-        private void SetCamera(Element element, Edge edge, View3D view3D)
+        private void SetCamera(Element element, Transform transform, Edge edge, View3D view3D)
         {
-            if (edge.AsCurve() is Line locationCurve)
+            if (edge.AsCurve().CreateTransformed(transform) is Line locationCurve)
             {
-                var vec = Util.GetVector(locationCurve);
+                var up = transform.OfVector(XYZ.BasisZ);
 
-                XYZ upDirection = GetUpDirection(edge, locationCurve);
-                if (upDirection == null)
-                {
-                    return;
-                }
-
-                view3D.SetOrientation(new ViewOrientation3D(locationCurve.Origin, upDirection, vec));
+                view3D.SetOrientation(new ViewOrientation3D(locationCurve.Origin, up, locationCurve.Direction));
                 _uidoc.ShowElements(element);
                 _uidoc.RefreshActiveView();
             }
-        }
-
-        private static XYZ DetermineMostSuitableNormal(IReadOnlyCollection<XYZ> normals)
-        {
-            var upVec = normals.Where(x => x != null).FirstOrDefault(Util.PointsUpwards);
-
-            return upVec ?? normals.First(x => x != null).Negate();
-        }
-
-        private static XYZ GetUpDirection(Edge edge, Line loc)
-        {
-            XYZ f1n = ComputeFaceNormal(edge.GetFace(0), loc);
-            XYZ f2n = ComputeFaceNormal(edge.GetFace(1), loc);
-
-            return DetermineMostSuitableNormal(new List<XYZ> { f1n, f2n });
-        }
-
-        private static XYZ ComputeFaceNormal(Face f, Line locationCurve)
-        {
-            if (f == null)
-            {
-                return null;
-            }
-
-            var uv = f.Project(locationCurve.Origin)?.UVPoint;
-
-            return uv == null
-                       ? null
-                       : f.ComputeNormal(uv);
         }
 
         private void SetCamera(Transform transform, Element element, Edge edge, View3D view3D)
         {
             if (edge.AsCurve() is Line locationCurve)
             {
-                //(Line perpendLine, Line orthLine) = PerpendLine(transform, locationCurve);
-                (Line perpendLine, Line orthLine) = PerpendLine(locationCurve);
+                (Line perpendLine, Line orthLine) = PerpendLine(transform, locationCurve);
 
                 using (var tran = new Transaction(_doc))
                 {
@@ -110,9 +69,9 @@ namespace RevitUtils.Geometry.RotateCamera
                     tran.Commit();
                 }
 
-                //view3D.SetOrientation(new ViewOrientation3D(transform.Origin, Util.GetVector(perpendLine), Util.GetVector(elementDirectionLine)));
-                //_uidoc.ShowElements(element);
-                //_uidoc.RefreshActiveView();
+                view3D.SetOrientation(new ViewOrientation3D(transform.Origin, Util.GetVector(perpendLine), Util.GetVector(locationCurve)));
+                _uidoc.ShowElements(element);
+                _uidoc.RefreshActiveView();
             }
         }
 
@@ -168,11 +127,13 @@ namespace RevitUtils.Geometry.RotateCamera
 
         private Edge PickEdge(Element instance)
         {
-            var edgeRef = _uidoc.Selection.PickObject(ObjectType.Edge,
-                                                      new EdgeSelectionFilter(instance),
-                                                      "Выберите траекторию, перпендикулярно которой будет расположена точка обзора.");
-            GeometryObject geoObject = _doc.GetElement(edgeRef).GetGeometryObjectFromReference(edgeRef);
+            var selectedEdgeReference = _uidoc.Selection.PickObject(ObjectType.Edge,
+                                                                    new EdgeSelectionFilter(instance),
+                                                                    "Выберите траекторию, перпендикулярно которой будет расположена точка обзора.");
+            var element = _doc.GetElement(selectedEdgeReference.ElementId);
+            GeometryObject geoObject = element.GetGeometryObjectFromReference(selectedEdgeReference);
             Edge edge = geoObject as Edge;
+
             return edge;
         }
 
@@ -242,6 +203,11 @@ namespace RevitUtils.Geometry.RotateCamera
                 return memberIds.Contains(elem.Id);
             }
 
+            if (elem is FamilyInstance instance)
+            {
+                return elem.Id == _element.Id || instance.SuperComponent?.Id == _element.Id;
+            }
+
             return elem.Id == _element.Id;
         }
 
@@ -286,6 +252,46 @@ namespace RevitUtils.Geometry.RotateCamera
         {
             SketchPlane sketchPlane = NewSketchPlaneContainCurve(line, app);
             return app.ActiveUIDocument.Document.Create.NewModelCurve(line, sketchPlane);
+        }
+
+        public static XYZ GetCurveNormal(Curve curve)
+        {
+            IList<XYZ> pts = curve.Tessellate();
+            int n = pts.Count;
+
+            XYZ p = pts[0];
+            XYZ q = pts[n - 1];
+            XYZ v = q - p;
+            XYZ w, normal = null;
+
+            if (2 == n)
+            {
+                // For non-vertical lines, use Z axis to
+                // span the plane, otherwise Y axis:
+                double dxy = Math.Abs(v.X) + Math.Abs(v.Y);
+
+                w = (dxy > Util.TolPointOnPlane)
+                        ? XYZ.BasisZ
+                        : XYZ.BasisY;
+
+                normal = v.CrossProduct(w).Normalize();
+            }
+            else
+            {
+                int i = 0;
+                while (++i < n - 1)
+                {
+                    w = pts[i] - p;
+                    normal = v.CrossProduct(w);
+                    if (!normal.IsZeroLength())
+                    {
+                        normal = normal.Normalize();
+                        break;
+                    }
+                }
+            }
+
+            return normal;
         }
 
         private static SketchPlane NewSketchPlaneContainCurve(Line line, UIApplication app)
