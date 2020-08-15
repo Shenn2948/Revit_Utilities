@@ -46,8 +46,8 @@
       <HintPath>C:\Program Files\Autodesk\Revit 2019\AdWindows.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="GeometRi, Version=1.3.5.13, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\GeometRi.1.3.5.13\lib\net20\GeometRi.dll</HintPath>
+    <Reference Include="GeometRi, Version=1.3.5.14, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\GeometRi.1.3.5.14\lib\net20\GeometRi.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.12.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
